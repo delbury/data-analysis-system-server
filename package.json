@@ -2,7 +2,7 @@
   "name": "data-analysis-system-server",
   "version": "1.0.0",
   "main": "index.js",
-  "author": "hujiqing <hujiqing@bytedance.com>",
+  "author": "delbury",
   "license": "MIT",
   "scripts": {
     "dev": "nodemon --watch src src/app.ts"
@@ -10,6 +10,7 @@
   "devDependencies": {
     "@types/koa": "^2.13.4",
     "@types/koa-router": "^7.4.4",
+    "@types/node": "^16.11.7",
     "@typescript-eslint/eslint-plugin": "^5.3.1",
     "@typescript-eslint/parser": "^5.3.1",
     "eslint": "^8.2.0",
@@ -21,6 +22,7 @@
   },
   "dependencies": {
     "@types/mysql": "^2.15.19",
+    "camelcase": "^6.2.1",
     "koa": "^2.13.4",
     "koa-body": "^4.2.0",
     "koa-router": "^10.1.1",

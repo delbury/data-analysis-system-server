@@ -1,5 +1,5 @@
 import Router from 'koa-router';
-import { run } from '../utils/mysql';
+import { run } from '../db/mysql';
 const router = new Router();
 
 router.get('/test', async (ctx) => {
