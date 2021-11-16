@@ -1,4 +1,5 @@
 import { DBTableCol, DBTable } from './interface';
+import { formatDatetime } from '../utils/tools';
 
 
 // 基本表字段
@@ -16,12 +17,15 @@ export const commonTableColumns: DBTableCol[] = [
     not_null: true,
     default: 0,
     comment: '是否已删除',
+    forbid_write: true,
   },
   {
     key: 'created_time',
     type: 'DATETIME',
     not_null: true,
     comment: '创建时间',
+    forbid_write: true,
+    create_default: () => formatDatetime(),
   },
   {
     key: 'createrName',

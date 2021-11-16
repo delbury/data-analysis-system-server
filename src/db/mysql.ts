@@ -1,7 +1,18 @@
 import mysql, { ConnectionConfig } from 'mysql';
-import { DBTable } from './interface';
+import keyBy from 'lodash/keyBy';
+import { DBTable, DBTableCol } from './interface';
+import { TableNames } from '../../types/tables';
+import { numberReg } from '../../libs/common';
 import { formatDatetime } from '../utils/tools';
+
+// 表配置
 import workbenchTable from './tables/workbench_table';
+
+// 数据库 table 列参数 map
+const getMap = (table: DBTable) => keyBy(table.columns, (col) => col.key);
+const DB_TABLE_MAP: { [key in TableNames]: Record<string, DBTableCol>} = {
+  workbench: getMap(workbenchTable),
+};
 
 const mysqlConfig: ConnectionConfig = {
   host: 'localhost',
@@ -9,30 +20,6 @@ const mysqlConfig: ConnectionConfig = {
   password: '123456a',
   // port: 3306,
   database: 'data_analysis_system',
-};
-
-// 创建数据库连接
-const createConnection = (cb?: (cnt: mysql.Connection) => void) => {
-  const cnt = mysql.createConnection({
-    ...mysqlConfig,
-    multipleStatements: true,
-  });
-  cnt.connect(err => {
-    if(err) throw err;
-    console.log('mysql connected !');
-    cb?.(cnt);
-    cnt.end();
-  });
-};
-
-// 执行 sql
-const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    cnt.query(sql, (err, result, fields) => {
-      if(err) return reject(err);
-      resolve(result);
-    });
-  });
 };
 
 // 创建数据库
@@ -64,81 +51,169 @@ const createTable = async (cnt: mysql.Connection, tableConfig: DBTable) => {
   return result;
 };
 
-// 数据库实例
-export class DB<T extends object = {}> {
-  private readonly table: string;
+// 执行 sql
+const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    cnt.query(sql, (err, result, fields) => {
+      if(err) return reject(err);
+      resolve(result);
+    });
+  });
+};
+
+/**
+ * 数据库操作类
+ */
+interface DBConfig<T> {
+  includeFields?: (keyof T)[];
+}
+export class DB<T extends {}> {
+  // 数据库表名
+  private readonly tableName: TableNames;
+  // 数据库字段 map
+  private readonly tableColumns: Record<string, DBTableCol>;
+  // 数据库连接
   private cnt: mysql.Connection | null = null;
-  constructor(table: string) {
-    this.table = table;
-    this.createConnection();
+  // 数据库字段返回包含的字段
+  private tableIncludeFields: Set<keyof T>;
+  // 数据库字段返回需要过滤的字段，优先级大于 tableIncludeFields
+  private tableExcludeFields: Set<keyof T>;
+
+  constructor(tableName: TableNames, config?: DBConfig<T>) {
+    this.tableName = tableName;
+    this.tableColumns = DB_TABLE_MAP[tableName];
+    this.setIncludeFields(config?.includeFields);
   }
+
+  // 设置数据库查询字段
+  setIncludeFields(fields?: (keyof T)[]) {
+    this.tableIncludeFields = fields ? new Set(fields) : null;
+  }
+  setExcludeFields(fields?: (keyof T)[]) {
+    this.tableExcludeFields = fields ? new Set(fields) : null;
+  }
+
+  // 数据字段处理
+  filterField(params: Partial<T>, isInsert: boolean): Partial<T> {
+    const temp: Partial<T> = {};
+    // 过滤数据库中存在的字段
+    Object.entries(params).forEach(([k, v]) => {
+      const col = this.tableColumns[k];
+      // 数据库存在 && 非主键 && 创建时 或 更新时且只读
+      if(
+        col &&
+        !col.primary_key &&
+        !col.forbid_write &&
+        (!col.write_only_insert || isInsert)
+      ) {
+        temp[k] = v;
+      }
+    });
+    return temp;
+  }
+
   // 插入
   async insert(data: Partial<T>) {
-    if(!this.cnt) return;
+    this.createConnection();
 
+    const filteredData = this.filterField(data, true);
+    // 设置默认值
+    Object.entries(this.tableColumns).forEach(([k, v]) => {
+      if(filteredData[k] === void 0 && v.create_default !== void 0) {
+        filteredData[k] = typeof v.create_default === 'function' ? v.create_default() : v.create_default;
+      }
+    });
     const keys: string[] = [];
     const values: string[] = [];
-    Object.entries(data).forEach(([k, v]) => {
+    Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
         keys.push(k);
         values.push(`'${v}'`);
       }
     });
-    console.log(keys, values);
-    const sql = `INSERT INTO ${this.table}(${keys.join(',')}) VALUES(${values.join(',')})`;
+    const sql = `INSERT INTO ${this.tableName}(${keys.join(',')}) VALUES(${values.join(',')})`;
     const res = await runSql(this.cnt, sql);
 
+    this.closeConnection();
     return res;
   }
+
   // 更新
   async update(id: string, data: Partial<T>) {
-    if(!this.cnt) return;
+    this.createConnection();
 
+    const filteredData = this.filterField(data, false);
     const kvs: string[] = [];
-    Object.entries(data).forEach(([k, v]) => {
+    Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
         kvs.push(`${k}='${v}'`);
       }
     });
-    const sql = `UPDATE ${this.table} SET ${kvs.join(' ')} WHERE id=${id}`;
+    const sql = `UPDATE ${this.tableName} SET ${kvs.join(' ')} WHERE id=${id}`;
     const res = await runSql(this.cnt, sql);
 
+    this.closeConnection();
     return res;
   }
+
   // 删除
   async delete(id: string) {
-    if(!this.cnt) return;
+    this.createConnection();
 
-    const sql = `DELETE FROM ${this.table} WHERE id=${id}`;
+    const sql = `DELETE FROM ${this.tableName} WHERE id='${id}'`;
     const res = await runSql(this.cnt, sql);
 
+    this.closeConnection();
     return res;
   }
+
   // 查询
   async search() {
-    if(!this.cnt) return;
+    this.createConnection();
 
-    const sql = `SELECT * FROM ${this.table}`;
+    const fields: string = (() => {
+      if(this.tableExcludeFields) {
+        // 排除
+        const temp = Object.keys(this.tableColumns).filter((key: any) => !this.tableExcludeFields.has(key));
+        return temp.join(',');
+      } else if(this.tableIncludeFields) {
+        // 只包含
+        return Array.from(this.tableIncludeFields).join(',');
+      }
+      return '*';
+    })();
+    const sql = `SELECT ${fields} FROM ${this.tableName}`;
     const res = await runSql(this.cnt, sql);
 
+    this.closeConnection();
     return res;
   }
+
   // 创建连接
   createConnection(cb?: () => void) {
-    if(!this.cnt) {
-      this.cnt = mysql.createConnection({
-        ...mysqlConfig,
-        multipleStatements: true,
-      });
+    return new Promise((resolve, reject) => {
+      if(!this.cnt) {
+        this.cnt = mysql.createConnection({
+          ...mysqlConfig,
+          multipleStatements: true,
+        });
 
-      this.cnt.connect(err => {
-        if(err) throw err;
-        console.log('mysql connected !');
-        cb?.();
-        // this.cnt?.end();
-      });
-    }
+        this.cnt.connect(err => {
+          if(err) reject(err);
+
+          if(cb) {
+            cb();
+            this.closeConnection();
+          }
+
+          resolve(this.cnt);
+        });
+      } else {
+        resolve(this.cnt);
+      }
+    });
   }
+
   // 关闭连接
   closeConnection() {
     if(this.cnt) {
@@ -147,18 +222,3 @@ export class DB<T extends object = {}> {
     }
   }
 }
-
-const db = new DB('workbench');
-export const run = () => {
-  // createConnection((cnt) => {
-  //   createTable(cnt, workbenchTable);
-  // });
-  // db.search();
-  // db.insert();
-  // db.delete('1');
-  // db.update('2');
-  // db.insert({
-  //   unit: '啥都没公司', dept: '居家部', trainer_id: '12345678', created_time: formatDatetime(),
-  // });
-  db.update('3', { unit: '都哟都有' });
-};

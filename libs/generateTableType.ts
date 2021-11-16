@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import camelcase from 'camelcase';
 
+import { numberReg } from './common';
 import { DBTable } from '../src/db/interface';
 
 type Modules = { default: DBTable }
@@ -22,22 +23,39 @@ main();
 // 主函数
 async function main() {
   const files = await fs.promises.readdir(tablesDirPath);
-  files.forEach(file => {
+  // 生成的每个 table 的类型文件
+  const tsFiles: string[] = [];
+  // 每个表名
+  const tableNames: string[] = [];
+
+  await Promise.all(files.map(file => {
     const tablePath = path.resolve(tablesDirPath, `./${file}`);
-    import(tablePath).then((modules: Modules) => {
+    return import(tablePath).then((modules: Modules) => {
       const module = modules.default;
-      // 生成ts文件
+      // 解析内容
       const content = resolveTableModule(module);
+      // 生成文件
+      const tsFile = `./${camelcase(module.name, { pascalCase: true })}`;
       saveAsFile(
-        path.resolve(outputDirPath, `./${camelcase(module.name, { pascalCase: true })}.d.ts`),
+        path.resolve(outputDirPath, `${tsFile}.d.ts`),
         content,
       );
+      tableNames.push(module.name);
+      tsFiles.push(tsFile);
     });
-  });
+  }));
+
+  // 生成 index 文件
+  const contents: string[] = [
+    ...tsFiles.map(file => `export * from '${file}';`),
+    '',
+    `export type TableNames = ${tableNames.map(name => `'${name}'`).join(' | ')};`,
+    '',
+  ];
+  saveAsFile(path.resolve(outputDirPath, './index.d.ts'), contents.join('\n'));
 }
 
 // 处理导入的table模块
-const numberReg = /^(DECIMAL|INT|TINYINT)/i;
 function resolveTableModule(module: DBTable): string {
   const typeName = `${camelcase(module.name, { pascalCase: true })}Table`;
   const contents: string[] = [];
