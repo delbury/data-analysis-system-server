@@ -7,8 +7,8 @@ const router = new Router();
 
 router.get('/test', async (ctx) => {
   // await db.insert({ });
-  const res = await db.search();
-  console.log(res);
+  // const res = await db.search();
+  // console.log(res);
 
   ctx.body = {
     msg: 'ok',

@@ -7,8 +7,10 @@ export const createRouter = <T>(db: DB<T>) => {
   router
     // 查询
     .get('/list', async (ctx) => {
-      const res = await db.search();
-      console.log(res);
+      const pageSize = Number(ctx.query.pageSize) || 20;
+      const pageNumer = Number(ctx.query.pageNumer) || 1;
+
+      const res = await db.search({ pageSize, pageNumer });
       ctx.body = {
         code: 200,
         data: {
@@ -19,8 +21,7 @@ export const createRouter = <T>(db: DB<T>) => {
     })
     // 添加
     .post('/list', async (ctx) => {
-      const res = await db.insert({});
-      console.log(res);
+      const res = await db.insert(ctx.request.body ?? {});
 
       ctx.body = {
         code: 200,
@@ -28,6 +29,14 @@ export const createRouter = <T>(db: DB<T>) => {
     })
     // 修改
     .put('/list/:id', async (ctx) => {
+      const id: string = ctx.params.id;
+      if(!id) throw Error('no id');
+
+      const res = await db.update(id, ctx.request.body ?? {});
+
+      ctx.body = {
+        code: 200,
+      };
     })
     // 删除
     .delete('/list/:id', async (ctx) => {

@@ -1,5 +1,5 @@
 import { DBTableCol, DBTable } from './interface';
-import { formatDatetime } from '../utils/tools';
+import moment from 'moment';
 
 
 // 基本表字段
@@ -25,7 +25,7 @@ export const commonTableColumns: DBTableCol[] = [
     not_null: true,
     comment: '创建时间',
     forbid_write: true,
-    create_default: () => formatDatetime(),
+    create_default: () => moment(new Date()).format('YYYY-MM-DD HH:mm:ss'),
   },
   {
     key: 'createrName',

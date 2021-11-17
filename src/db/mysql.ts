@@ -3,7 +3,6 @@ import keyBy from 'lodash/keyBy';
 import { DBTable, DBTableCol } from './interface';
 import { TableNames } from '../../types/tables';
 import { numberReg } from '../../libs/common';
-import { formatDatetime } from '../utils/tools';
 
 // 表配置
 import workbenchTable from './tables/workbench_table';
@@ -67,6 +66,12 @@ const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
 interface DBConfig<T> {
   includeFields?: (keyof T)[];
 }
+interface SearchParams<T> {
+  pageSize: number;
+  pageNumer: number;
+  orderBy?: keyof T;
+  order?: 'asc' | 'desc'
+}
 export class DB<T extends {}> {
   // 数据库表名
   private readonly tableName: TableNames;
@@ -106,7 +111,15 @@ export class DB<T extends {}> {
         !col.forbid_write &&
         (!col.write_only_insert || isInsert)
       ) {
-        temp[k] = v;
+        if(/^DATETIME/i.test(col.type)) {
+          temp[k] = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
+        } else if(/^TIME/i.test(col.type)) {
+          temp[k] = `DATE_FORMAT('${v}','%H:%i:%s')`;
+        } else if(/^DATE/i.test(col.type)) {
+          temp[k] = `DATE_FORMAT('${v}','%Y-%m-%d')`;
+        } else {
+          temp[k] = `'${numberReg.test(col.type) ? Number(v) : v}'`;
+        }
       }
     });
     return temp;
@@ -146,10 +159,10 @@ export class DB<T extends {}> {
     const kvs: string[] = [];
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
-        kvs.push(`${k}='${v}'`);
+        kvs.push(`${k}=${v}`);
       }
     });
-    const sql = `UPDATE ${this.tableName} SET ${kvs.join(' ')} WHERE id=${id}`;
+    const sql = `UPDATE ${this.tableName} SET ${kvs.join(' ')} WHERE id='${id}'`;
     const res = await runSql(this.cnt, sql);
 
     this.closeConnection();
@@ -167,24 +180,50 @@ export class DB<T extends {}> {
     return res;
   }
 
+  // 查询格式化
+  formatField(list: string[]) {
+    return list.map(it => {
+      const col = this.tableColumns[it];
+      if(/^DATETIME/i.test(col.type)) {
+        return `DATE_FORMAT(${it},'%Y-%m-%d %H:%i:%s') as ${it}`;
+      } else if(/^TIME/i.test(col.type)) {
+        return `DATE_FORMAT(${it},'%H:%i:%s') as ${it}`;
+      } else if(/^DATE/i.test(col.type)) {
+        return `DATE_FORMAT(${it},'%Y-%m-%d') as ${it}`;
+      }
+      return it;
+    });
+  }
   // 查询
-  async search() {
+  async search(params: SearchParams<T>, filter?: string[]) {
     this.createConnection();
 
     const fields: string = (() => {
       if(this.tableExcludeFields) {
         // 排除
         const temp = Object.keys(this.tableColumns).filter((key: any) => !this.tableExcludeFields.has(key));
-        return temp.join(',');
+        return this.formatField(temp).join(',');
       } else if(this.tableIncludeFields) {
         // 只包含
-        return Array.from(this.tableIncludeFields).join(',');
+        return this.formatField(Array.from(this.tableIncludeFields) as string[]).join(',');
       }
       return '*';
     })();
-    const sql = `SELECT ${fields} FROM ${this.tableName}`;
-    const res = await runSql(this.cnt, sql);
 
+    // sql
+    const sqls = [`SELECT ${fields} FROM ${this.tableName}`];
+    if(filter?.length) {
+      sqls.push(`WHERE ${(filter ?? []).join(' AND ')}`);
+    }
+    // 排序
+    if(params.orderBy && params.order) {
+      sqls.push(`ORDER BY ${params.orderBy} ${params.order}`);
+    }
+    // 分页
+    const offset: number = (params.pageNumer - 1) * params.pageSize;
+    sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
+
+    const res = await runSql(this.cnt, sqls.join(' '));
     this.closeConnection();
     return res;
   }
