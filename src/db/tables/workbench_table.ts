@@ -108,7 +108,7 @@ const table: DBTable = {
       default: 0,
     },
     {
-      key: 'trained_hours_pratice',
+      key: 'trained_hours_practice',
       type: 'DECIMAL(5,2)',
       default: 0,
     },

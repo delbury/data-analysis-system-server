@@ -8,14 +8,14 @@ export const createRouter = <T>(db: DB<T>) => {
     // 查询
     .get('/list', async (ctx) => {
       const pageSize = Number(ctx.query.pageSize) || 20;
-      const pageNumer = Number(ctx.query.pageNumer) || 1;
+      const pageNumber = Number(ctx.query.pageNumber) || 1;
 
-      const res = await db.search({ pageSize, pageNumer });
+      const res = await db.search({ pageSize, pageNumber });
       ctx.body = {
         code: 200,
         data: {
-          total: 0,
-          list: res,
+          total: res.total,
+          list: res.list,
         },
       };
     })

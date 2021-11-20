@@ -3,6 +3,7 @@ import keyBy from 'lodash/keyBy';
 import { DBTable, DBTableCol } from './interface';
 import { TableNames } from '../../types/tables';
 import { numberReg } from '../../libs/common';
+import moment from 'moment';
 
 // 表配置
 import workbenchTable from './tables/workbench_table';
@@ -22,33 +23,52 @@ const mysqlConfig: ConnectionConfig = {
 };
 
 // 创建数据库
-const createDatabase = async (cnt: mysql.Connection) => {
+export const createDatabase = async (cnt: mysql.Connection) => {
   const sql = `CREATE DATABASE ${mysqlConfig.database}`;
   await runSql(cnt, sql);
   console.log('create database success !');
 };
 
-// 创建表
-const createTable = async (cnt: mysql.Connection, tableConfig: DBTable) => {
-  // 生成字段配置
-  const cols = tableConfig.columns.map(it => {
-    const opts: string[] = [it.key, it.type];
-    if(it.not_null) opts.push('NOT NULL');
-    if(it.comment !== void 0) opts.push(`COMMENT '${it.comment}'`);
-    if(it.auto_increment) opts.push('AUTO_INCREMENT');
-    if(it.primary_key) opts.push('PRIMARY KEY');
-    if(it.default !== void 0) opts.push('DEFAULT ' + it.default);
-    return opts.join(' ');
-  }).join(',');
+// 创建连接
+export const createConnection = (cb?: (cnt: mysql.Connection) => void) => {
+  const cnt = mysql.createConnection({
+    ...mysqlConfig,
+    multipleStatements: true,
+  });
 
-  const sql = [
-    `DROP TABLE IF EXISTS ${tableConfig.name}`,
-    `CREATE TABLE IF NOT EXISTS ${tableConfig.name}(${cols})`,
-  ].join(';');
+  cnt.connect(err => {
+    if(err) throw err;
 
-  const result = await runSql(cnt, sql);
-  return result;
+    cb?.(cnt);
+    cnt.end();
+  });
 };
+
+// 创建表
+export const createTable = (tableConfig: DBTable) => {
+  createConnection(async (cnt) => {
+    // 生成字段配置
+    const cols = tableConfig.columns.map(it => {
+      const opts: string[] = [it.key, it.type];
+      if(it.not_null) opts.push('NOT NULL');
+      if(it.comment !== void 0) opts.push(`COMMENT '${it.comment}'`);
+      if(it.auto_increment) opts.push('AUTO_INCREMENT');
+      if(it.primary_key) opts.push('PRIMARY KEY');
+      if(it.default !== void 0) opts.push('DEFAULT ' + it.default);
+      return opts.join(' ');
+    }).join(',');
+
+    const sql = [
+      `DROP TABLE IF EXISTS ${tableConfig.name}`,
+      `CREATE TABLE IF NOT EXISTS ${tableConfig.name}(${cols})`,
+    ].join(';');
+
+    const result = await runSql(cnt, sql);
+    console.log('database table created !');
+    return result;
+  });
+};
+
 
 // 执行 sql
 const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
@@ -68,9 +88,9 @@ interface DBConfig<T> {
 }
 interface SearchParams<T> {
   pageSize: number;
-  pageNumer: number;
+  pageNumber: number;
   orderBy?: keyof T;
-  order?: 'asc' | 'desc'
+  order?: 'asc' | 'desc';
 }
 export class DB<T extends {}> {
   // 数据库表名
@@ -79,9 +99,9 @@ export class DB<T extends {}> {
   private readonly tableColumns: Record<string, DBTableCol>;
   // 数据库连接
   private cnt: mysql.Connection | null = null;
-  // 数据库字段返回包含的字段
+  // 数据库字段返回包含的字段，优先级大于 tableExcludeFields
   private tableIncludeFields: Set<keyof T>;
-  // 数据库字段返回需要过滤的字段，优先级大于 tableIncludeFields
+  // 数据库字段返回需要过滤的字段
   private tableExcludeFields: Set<keyof T>;
 
   constructor(tableName: TableNames, config?: DBConfig<T>) {
@@ -111,40 +131,51 @@ export class DB<T extends {}> {
         !col.forbid_write &&
         (!col.write_only_insert || isInsert)
       ) {
-        if(/^DATETIME/i.test(col.type)) {
-          temp[k] = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
-        } else if(/^TIME/i.test(col.type)) {
-          temp[k] = `DATE_FORMAT('${v}','%H:%i:%s')`;
-        } else if(/^DATE/i.test(col.type)) {
-          temp[k] = `DATE_FORMAT('${v}','%Y-%m-%d')`;
-        } else {
-          temp[k] = `'${numberReg.test(col.type) ? Number(v) : v}'`;
-        }
+        temp[k] = this.transferFieldValue(col.type, v);
       }
     });
     return temp;
   }
+  // 值处理
+  transferFieldValue(type: string, v: any) {
+    let res: any = '';
+    if(/^DATETIME/i.test(type)) {
+      res = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
+    } else if(/^DATE/i.test(type)) {
+      res = `DATE_FORMAT('${v}','%Y-%m-%d')`;
+    } else {
+      res = `'${numberReg.test(type) ? Number(v) : v}'`;
+    }
+    return res;
+  }
 
   // 插入
-  async insert(data: Partial<T>) {
-    this.createConnection();
+  async insert(datas: Partial<T> | Partial<T>[]) {
+    await this.createConnection();
 
-    const filteredData = this.filterField(data, true);
-    // 设置默认值
-    Object.entries(this.tableColumns).forEach(([k, v]) => {
-      if(filteredData[k] === void 0 && v.create_default !== void 0) {
-        filteredData[k] = typeof v.create_default === 'function' ? v.create_default() : v.create_default;
-      }
-    });
-    const keys: string[] = [];
-    const values: string[] = [];
-    Object.entries(filteredData).forEach(([k, v]) => {
-      if(v !== void 0) {
-        keys.push(k);
-        values.push(`'${v}'`);
-      }
-    });
-    const sql = `INSERT INTO ${this.tableName}(${keys.join(',')}) VALUES(${values.join(',')})`;
+    if(!Array.isArray(datas)) datas = [datas];
+
+    const sql = datas.map((data) => {
+      const filteredData = this.filterField(data, true);
+      // 设置默认值
+      Object.entries(this.tableColumns).forEach(([k, v]) => {
+        if(filteredData[k] === void 0 && v.create_default !== void 0) {
+          const dv = typeof v.create_default === 'function' ? v.create_default() : v.create_default;
+          filteredData[k] = this.transferFieldValue(v.type, dv);
+        }
+      });
+      const keys: string[] = [];
+      const values: string[] = [];
+      Object.entries(filteredData).forEach(([k, v]) => {
+        if(v !== void 0) {
+          keys.push(k);
+          values.push(`${v}`);
+        }
+      });
+      const sql = `INSERT INTO ${this.tableName}(${keys.join(',')}) VALUES(${values.join(',')})`;
+      return sql;
+    }).join(';');
+
     const res = await runSql(this.cnt, sql);
 
     this.closeConnection();
@@ -153,7 +184,7 @@ export class DB<T extends {}> {
 
   // 更新
   async update(id: string, data: Partial<T>) {
-    this.createConnection();
+    await this.createConnection();
 
     const filteredData = this.filterField(data, false);
     const kvs: string[] = [];
@@ -171,7 +202,7 @@ export class DB<T extends {}> {
 
   // 删除
   async delete(id: string) {
-    this.createConnection();
+    await this.createConnection();
 
     const sql = `DELETE FROM ${this.tableName} WHERE id='${id}'`;
     const res = await runSql(this.cnt, sql);
@@ -186,8 +217,6 @@ export class DB<T extends {}> {
       const col = this.tableColumns[it];
       if(/^DATETIME/i.test(col.type)) {
         return `DATE_FORMAT(${it},'%Y-%m-%d %H:%i:%s') as ${it}`;
-      } else if(/^TIME/i.test(col.type)) {
-        return `DATE_FORMAT(${it},'%H:%i:%s') as ${it}`;
       } else if(/^DATE/i.test(col.type)) {
         return `DATE_FORMAT(${it},'%Y-%m-%d') as ${it}`;
       }
@@ -196,36 +225,45 @@ export class DB<T extends {}> {
   }
   // 查询
   async search(params: SearchParams<T>, filter?: string[]) {
-    this.createConnection();
+    await this.createConnection();
 
     const fields: string = (() => {
-      if(this.tableExcludeFields) {
-        // 排除
-        const temp = Object.keys(this.tableColumns).filter((key: any) => !this.tableExcludeFields.has(key));
-        return this.formatField(temp).join(',');
-      } else if(this.tableIncludeFields) {
+      if(this.tableIncludeFields) {
         // 只包含
         return this.formatField(Array.from(this.tableIncludeFields) as string[]).join(',');
+      } else {
+        // 排除
+        const temp = Object.keys(this.tableColumns).filter((key: any) => this.tableExcludeFields ? !this.tableExcludeFields.has(key) : true);
+        return this.formatField(temp).join(',');
       }
-      return '*';
     })();
 
     // sql
-    const sqls = [`SELECT ${fields} FROM ${this.tableName}`];
+    const sqls = [`SELECT SQL_CALC_FOUND_ROWS ${fields} FROM ${this.tableName}`];
     if(filter?.length) {
       sqls.push(`WHERE ${(filter ?? []).join(' AND ')}`);
     }
     // 排序
     if(params.orderBy && params.order) {
       sqls.push(`ORDER BY ${params.orderBy} ${params.order}`);
+    } else {
+      sqls.push('ORDER BY created_time desc');
     }
     // 分页
-    const offset: number = (params.pageNumer - 1) * params.pageSize;
+    const offset: number = (params.pageNumber - 1) * params.pageSize;
     sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
 
-    const res = await runSql(this.cnt, sqls.join(' '));
+    const res = await runSql(this.cnt, sqls.join(' ') + ';SELECT FOUND_ROWS() as total;');
     this.closeConnection();
-    return res;
+    return {
+      list: res[0],
+      total: JSON.parse(JSON.stringify(res[1]))[0].total,
+    };
+  }
+
+  // 根据 id 查询
+  async detail(id: string) {
+    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`id=${id}`])).list?.[0];
   }
 
   // 创建连接
@@ -259,5 +297,24 @@ export class DB<T extends {}> {
       this.cnt.end();
       this.cnt = null;
     }
+  }
+
+  // 插入测试数据
+  async insertTestData(n = 1) {
+    const data = {};
+    Object.entries(this.tableColumns).forEach(([k, v]) => {
+      if(/^DATETIME/i.test(v.type)) {
+        data[k] = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
+      } else if(/^TIME/i.test(v.type)) {
+        data[k] = moment(new Date()).format('HH:mm:ss');
+      } else if(/^DATE/i.test(v.type)) {
+        data[k] = moment(new Date()).format('YYYY-MM-DD');
+      } else if(/^(DECIMAL|INT|TINYINT)/i.test(v.type)) {
+        data[k] = 1;
+      } else {
+        data[k] = 'test';
+      }
+    });
+    return await this.insert(Array(n).fill(data));
   }
 }

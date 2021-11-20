@@ -28,15 +28,7 @@ export const commonTableColumns: DBTableCol[] = [
     create_default: () => moment(new Date()).format('YYYY-MM-DD HH:mm:ss'),
   },
   {
-    key: 'createrName',
-    type: 'CHAR(20)',
-  },
-  {
-    key: 'createrCode',
-    type: 'CHAR(20)',
-  },
-  {
-    key: 'createrId',
+    key: 'creater_id',
     type: 'INT(11) UNSIGNED',
   },
 ];

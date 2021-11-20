@@ -23,7 +23,7 @@ export interface WorkbenchTable {
   trained_count_work: number;
   trained_count_total: number;
   trained_hours_theory: number;
-  trained_hours_pratice: number;
+  trained_hours_practice: number;
   trained_hours_total: number;
   train_effect_count: number;
   student_evaluation_score: number;
@@ -37,7 +37,7 @@ export interface WorkbenchTable {
   is_delete: number;
   // 创建时间
   created_time: string;
-  createrName: string;
-  createrCode: string;
-  createrId: number;
+  creater_name: string;
+  creater_code: string;
+  creater_id: number;
 }
