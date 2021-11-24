@@ -25,6 +25,10 @@ const table: DBTable = {
       type: 'VARCHAR(100)',
     },
     {
+      key: 'group',
+      type: 'VARCHAR(100)',
+    },
+    {
       key: 'project_code',
       type: 'CHAR(20)',
     },

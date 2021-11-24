@@ -4,6 +4,7 @@ export interface WorkbenchTable {
   end_time: string;
   unit: string;
   dept: string;
+  group: string;
   project_code: string;
   tran_project_name: string;
   train_course_name: string;
@@ -37,7 +38,5 @@ export interface WorkbenchTable {
   is_delete: number;
   // 创建时间
   created_time: string;
-  creater_name: string;
-  creater_code: string;
   creater_id: number;
 }

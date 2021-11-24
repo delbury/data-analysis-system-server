@@ -6,7 +6,7 @@ export const createRouter = <T>(db: DB<T>) => {
 
   router
     // 查询
-    .get('/list', async (ctx) => {
+    .get('/list/', async (ctx) => {
       const pageSize = Number(ctx.query.pageSize) || 20;
       const pageNumber = Number(ctx.query.pageNumber) || 1;
 
@@ -19,8 +19,19 @@ export const createRouter = <T>(db: DB<T>) => {
         },
       };
     })
+    // 详情
+    .get('/list/:id/', async (ctx) => {
+      const id: string = ctx.params.id;
+      if(!id) throw Error('no id');
+
+      const res = await db.detail(id);
+      ctx.body = {
+        code: 200,
+        data: res,
+      };
+    })
     // 添加
-    .post('/list', async (ctx) => {
+    .post('/list/', async (ctx) => {
       const res = await db.insert(ctx.request.body ?? {});
 
       ctx.body = {
@@ -28,7 +39,7 @@ export const createRouter = <T>(db: DB<T>) => {
       };
     })
     // 修改
-    .put('/list/:id', async (ctx) => {
+    .put('/list/:id/', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
@@ -39,7 +50,7 @@ export const createRouter = <T>(db: DB<T>) => {
       };
     })
     // 删除
-    .delete('/list/:id', async (ctx) => {
+    .delete('/list/:id/', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 

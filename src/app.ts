@@ -10,6 +10,7 @@ app
       await next();
     } catch(err) {
       console.error(err);
+      ctx.status = 400;
       ctx.body = {
         code: 400,
         msg: err.message,
@@ -19,5 +20,4 @@ app
   .use(koaBody())
   .use(router.routes())
   .use(router.allowedMethods());
-
 app.listen(4000);

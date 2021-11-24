@@ -1,5 +1,8 @@
 import Router from 'koa-router';
 import workbench from './workbench';
+import teamgroup from './teamgroup';
+import staff from './staff';
+
 import test from './test';
 
 const BASE_PATH = '/api';
@@ -7,6 +10,8 @@ const BASE_PATH = '/api';
 // 所有导入路由数组
 const controllers: { baseUrl: string, router: Router }[] = [
   workbench,
+  teamgroup,
+  staff,
 ];
 
 const router = new Router();

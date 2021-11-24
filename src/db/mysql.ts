@@ -7,11 +7,15 @@ import moment from 'moment';
 
 // 表配置
 import workbenchTable from './tables/workbench_table';
+import teamGroupTable from './tables/team_group_table';
+import staffTable from './tables/staff_table';
 
 // 数据库 table 列参数 map
 const getMap = (table: DBTable) => keyBy(table.columns, (col) => col.key);
 const DB_TABLE_MAP: { [key in TableNames]: Record<string, DBTableCol>} = {
   workbench: getMap(workbenchTable),
+  team_group: getMap(teamGroupTable),
+  staff: getMap(staffTable),
 };
 
 const mysqlConfig: ConnectionConfig = {
@@ -46,27 +50,31 @@ export const createConnection = (cb?: (cnt: mysql.Connection) => void) => {
 
 // 创建表
 export const createTable = (tableConfig: DBTable) => {
-  createConnection(async (cnt) => {
-    // 生成字段配置
-    const cols = tableConfig.columns.map(it => {
-      const opts: string[] = [it.key, it.type];
-      if(it.not_null) opts.push('NOT NULL');
-      if(it.comment !== void 0) opts.push(`COMMENT '${it.comment}'`);
-      if(it.auto_increment) opts.push('AUTO_INCREMENT');
-      if(it.primary_key) opts.push('PRIMARY KEY');
-      if(it.default !== void 0) opts.push('DEFAULT ' + it.default);
-      return opts.join(' ');
-    }).join(',');
+  return new Promise((resolve, reject) => {
+    createConnection(async (cnt) => {
+      // 生成字段配置
+      const cols = tableConfig.columns.map(it => {
+        const opts: string[] = [`\`${it.key}\``, it.type];
+        if(it.not_null) opts.push('NOT NULL');
+        if(it.comment !== void 0) opts.push(`COMMENT '${it.comment}'`);
+        if(it.auto_increment) opts.push('AUTO_INCREMENT');
+        if(it.primary_key) opts.push('PRIMARY KEY');
+        if(it.default !== void 0) opts.push('DEFAULT ' + it.default);
+        return opts.join(' ');
+      }).join(',');
 
-    const sql = [
-      `DROP TABLE IF EXISTS ${tableConfig.name}`,
-      `CREATE TABLE IF NOT EXISTS ${tableConfig.name}(${cols})`,
-    ].join(';');
+      const sql = [
+        `DROP TABLE IF EXISTS ${tableConfig.name}`,
+        `CREATE TABLE IF NOT EXISTS ${tableConfig.name}(${cols})`,
+      ].join(';');
 
-    const result = await runSql(cnt, sql);
-    console.log('database table created !');
-    return result;
+      const result = await runSql(cnt, sql);
+      console.log('database table created !');
+
+      resolve(result);
+    });
   });
+
 };
 
 
@@ -168,7 +176,7 @@ export class DB<T extends {}> {
       const values: string[] = [];
       Object.entries(filteredData).forEach(([k, v]) => {
         if(v !== void 0) {
-          keys.push(k);
+          keys.push(`\`${k}\``);
           values.push(`${v}`);
         }
       });
@@ -190,10 +198,10 @@ export class DB<T extends {}> {
     const kvs: string[] = [];
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
-        kvs.push(`${k}=${v}`);
+        kvs.push(`\`${k}\`=${v}`);
       }
     });
-    const sql = `UPDATE ${this.tableName} SET ${kvs.join(' ')} WHERE id='${id}'`;
+    const sql = `UPDATE ${this.tableName} SET ${kvs.join(',')} WHERE id='${id}'`;
     const res = await runSql(this.cnt, sql);
 
     this.closeConnection();
@@ -216,11 +224,11 @@ export class DB<T extends {}> {
     return list.map(it => {
       const col = this.tableColumns[it];
       if(/^DATETIME/i.test(col.type)) {
-        return `DATE_FORMAT(${it},'%Y-%m-%d %H:%i:%s') as ${it}`;
+        return `DATE_FORMAT(\`${it}\`,'%Y-%m-%d %H:%i:%s') as \`${it}\``;
       } else if(/^DATE/i.test(col.type)) {
-        return `DATE_FORMAT(${it},'%Y-%m-%d') as ${it}`;
+        return `DATE_FORMAT(\`${it}\`,'%Y-%m-%d') as \`${it}\``;
       }
-      return it;
+      return `\`${it}\``;
     });
   }
   // 查询
