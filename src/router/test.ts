@@ -8,8 +8,29 @@ import { WorkbenchTable, TeamGroupTable, StaffTable } from '../../types/tables';
 const router = new Router();
 
 const dbWorkbench = new DB<WorkbenchTable>('workbench', { includeFields: ['created_time', 'id'] });
-const dbTeamGroup = new DB<WorkbenchTable>('team_group', { includeFields: ['created_time', 'id'] });
-const dbStaff = new DB<WorkbenchTable>('staff', { includeFields: ['created_time', 'id'] });
+const dbTeamGroup = new DB<TeamGroupTable>('team_group', { includeFields: ['created_time', 'id'] });
+const dbStaff = new DB<StaffTable>('staff', { includeFields: ['created_time', 'id'] });
+
+// 初始化数据
+const teamGroupInitData: Partial<TeamGroupTable>[] = [
+  { name: '5号线AFC商贸城工班' },
+  { name: '5号线AFC塞云台工班' },
+  { name: '5号线AFC九兴工班' },
+  { name: '5号线AFC大源工班' },
+  { name: '5号线风水电工班' },
+  { name: '5号线消防工班' },
+  { name: '5号线综合监控工班' },
+  { name: '5号线屏电工班' },
+  { name: '中铁十二局' },
+  { name: '正立消防' },
+  { name: '奥的斯机电' },
+  { name: '三菱' },
+  { name: '迅达' },
+  { name: '今创' },
+  { name: '惠民登辉' },
+  { name: '维创' },
+  { name: '技术组' },
+];
 
 router.get('/test', async (ctx) => {
 
@@ -18,11 +39,11 @@ router.get('/test', async (ctx) => {
     // res,
   };
 }).get('/test/init', async (ctx) => {
-  // await createTable(workbenchTableConfig);
-  // await dbWorkbench.insertTestData(2);
+  await createTable(workbenchTableConfig);
+  await dbWorkbench.insertTestData(20);
 
-  // await createTable(teamGroupTableConfig);
-  // await dbTeamGroup.insertTestData(4);
+  await createTable(teamGroupTableConfig);
+  await dbTeamGroup.insert(teamGroupInitData);
 
   await createTable(staffTableConfig);
   await dbStaff.insertTestData(4);

@@ -30,5 +30,6 @@ export const commonTableColumns: DBTableCol[] = [
   {
     key: 'creater_id',
     type: 'INT(11) UNSIGNED',
+    // default: 0,
   },
 ];

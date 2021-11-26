@@ -23,6 +23,16 @@ export interface DBTableCol {
   forbid_write?: boolean;
   // 创建时自动生成的默认值
   create_default?: string | number | (() => string | number);
+  // 查询时关联的其他表
+  join_table?: {
+    type: 'INNER' | 'LEFT' | 'RIGHT';
+    // 表名
+    table: string;
+    // 需要被 join 的 table 的字段（key），及别名（value）
+    fieldsMap: Record<string, string>;
+    // 被 join 的匹配字段，默认为 id
+    joinedField?: string;
+  };
 }
 
 // 表配置

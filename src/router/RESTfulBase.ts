@@ -9,8 +9,9 @@ export const createRouter = <T>(db: DB<T>) => {
     .get('/list/', async (ctx) => {
       const pageSize = Number(ctx.query.pageSize) || 20;
       const pageNumber = Number(ctx.query.pageNumber) || 1;
+      const all = Number(ctx.query.all) || 0;
 
-      const res = await db.search({ pageSize, pageNumber });
+      const res = await db.search({ pageSize, pageNumber, all });
       ctx.body = {
         code: 200,
         data: {

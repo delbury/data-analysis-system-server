@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "nodemon --watch src src/app.ts",
-    "types": "sh ./generate-type.sh"
+    "types": "sh ./generate-type.sh",
+    "reinit": "sh ./reinit.sh"
   },
   "devDependencies": {
     "@types/koa": "^2.13.4",

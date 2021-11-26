@@ -2,11 +2,11 @@ export interface WorkbenchTable {
   date: string;
   start_time: string;
   end_time: string;
-  unit: string;
+  company: string;
   dept: string;
-  group: string;
+  group_id: number;
   project_code: string;
-  tran_project_name: string;
+  train_project_name: string;
   train_course_name: string;
   train_level: string;
   train_content: string;

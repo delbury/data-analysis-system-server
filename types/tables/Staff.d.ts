@@ -1,5 +1,12 @@
 export interface StaffTable {
   name: string;
+  code: string;
+  phone: string;
+  company: string;
+  // 职系序列
+  job: string;
+  // 是否取得上岗资格证书
+  has_cert: number;
   remark: string;
   // 主键
   id: number;

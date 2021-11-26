@@ -17,7 +17,7 @@ const table: DBTable = {
       type: 'TIME',
     },
     {
-      key: 'unit',
+      key: 'company',
       type: 'VARCHAR(100)',
     },
     {
@@ -25,15 +25,22 @@ const table: DBTable = {
       type: 'VARCHAR(100)',
     },
     {
-      key: 'group',
-      type: 'VARCHAR(100)',
+      key: 'group_id',
+      type: 'INT(11)',
+      join_table: {
+        type: 'INNER',
+        table: 'team_group',
+        fieldsMap: {
+          name: 'group_name',
+        },
+      },
     },
     {
       key: 'project_code',
       type: 'CHAR(20)',
     },
     {
-      key: 'tran_project_name',
+      key: 'train_project_name',
       type: 'VARCHAR(100)',
     },
     {

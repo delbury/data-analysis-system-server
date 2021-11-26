@@ -64,8 +64,8 @@ export const createTable = (tableConfig: DBTable) => {
       }).join(',');
 
       const sql = [
-        `DROP TABLE IF EXISTS ${tableConfig.name}`,
-        `CREATE TABLE IF NOT EXISTS ${tableConfig.name}(${cols})`,
+        `DROP TABLE IF EXISTS \`${tableConfig.name}\``,
+        `CREATE TABLE IF NOT EXISTS \`${tableConfig.name}\`(${cols})`,
       ].join(';');
 
       const result = await runSql(cnt, sql);
@@ -95,6 +95,7 @@ interface DBConfig<T> {
   includeFields?: (keyof T)[];
 }
 interface SearchParams<T> {
+  all?: number;
   pageSize: number;
   pageNumber: number;
   orderBy?: keyof T;
@@ -220,48 +221,79 @@ export class DB<T extends {}> {
   }
 
   // 查询格式化
-  formatField(list: string[]) {
-    return list.map(it => {
+  formatField(list: string[], tableName?: string) {
+    // join 语句
+    const joins: string[] = [];
+
+    // 最后查询结果的字段
+    const fields: string[] = [];
+
+    // 遍历
+    list.forEach(it => {
+      // 字段配置
       const col = this.tableColumns[it];
+
+      // 格式化日期数据的查询结果
+      const fieldName = !tableName ? `\`${it}\`` : `\`${tableName}\`.\`${it}\``;
+      let finalFieldName: string;
       if(/^DATETIME/i.test(col.type)) {
-        return `DATE_FORMAT(\`${it}\`,'%Y-%m-%d %H:%i:%s') as \`${it}\``;
+        finalFieldName = `DATE_FORMAT(${fieldName},'%Y-%m-%d %H:%i:%s') AS \`${it}\``;
       } else if(/^DATE/i.test(col.type)) {
-        return `DATE_FORMAT(\`${it}\`,'%Y-%m-%d') as \`${it}\``;
+        finalFieldName = `DATE_FORMAT(${fieldName},'%Y-%m-%d') AS \`${it}\``;
+      } else {
+        finalFieldName = `${fieldName}`;
       }
-      return `\`${it}\``;
+      fields.push(finalFieldName);
+
+      // 是否 join
+      if(col.join_table && tableName) {
+        const { table: jt, type, fieldsMap, joinedField: jf } = col.join_table;
+        const joinSql = `${type} JOIN \`${jt}\` ON \`${tableName}\`.\`${it}\`=\`${jt}\`.\`${jf ?? 'id'}\``;
+        joins.push(joinSql);
+        Object.entries(fieldsMap).forEach(([key, val]) => {
+          fields.push(`\`${jt}\`.\`${key}\` AS \`${val}\``);
+        });
+      }
     });
+
+    return [fields, joins];
   }
   // 查询
   async search(params: SearchParams<T>, filter?: string[]) {
     await this.createConnection();
 
-    const fields: string = (() => {
+    const [fields, joins] = (() => {
       if(this.tableIncludeFields) {
         // 只包含
-        return this.formatField(Array.from(this.tableIncludeFields) as string[]).join(',');
+        return this.formatField(Array.from(this.tableIncludeFields) as string[], this.tableName);
       } else {
         // 排除
         const temp = Object.keys(this.tableColumns).filter((key: any) => this.tableExcludeFields ? !this.tableExcludeFields.has(key) : true);
-        return this.formatField(temp).join(',');
+        return this.formatField(temp, this.tableName);
       }
     })();
 
     // sql
-    const sqls = [`SELECT SQL_CALC_FOUND_ROWS ${fields} FROM ${this.tableName}`];
+    const sqls = [`SELECT SQL_CALC_FOUND_ROWS ${fields.join(',')} FROM \`${this.tableName}\``];
+    // join
+    sqls.push(...joins);
+    // 查询条件
     if(filter?.length) {
       sqls.push(`WHERE ${(filter ?? []).join(' AND ')}`);
     }
     // 排序
     if(params.orderBy && params.order) {
-      sqls.push(`ORDER BY ${params.orderBy} ${params.order}`);
+      sqls.push(`ORDER BY \`${params.orderBy}\` ${params.order}`);
     } else {
-      sqls.push('ORDER BY created_time desc');
+      sqls.push('ORDER BY `created_time` desc');
     }
     // 分页
-    const offset: number = (params.pageNumber - 1) * params.pageSize;
-    sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
+    if(!params.all) {
+      const offset: number = (params.pageNumber - 1) * params.pageSize;
+      sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
+    }
 
-    const res = await runSql(this.cnt, sqls.join(' ') + ';SELECT FOUND_ROWS() as total;');
+    const res = await runSql(this.cnt, sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;');
     this.closeConnection();
     return {
       list: res[0],
