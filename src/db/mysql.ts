@@ -303,7 +303,7 @@ export class DB<T extends {}> {
 
   // 根据 id 查询
   async detail(id: string) {
-    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`id=${id}`])).list?.[0];
+    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`\`${this.tableName}\`.\`id\`='${id}'`])).list?.[0];
   }
 
   // 创建连接

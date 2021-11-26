@@ -28,7 +28,7 @@ const table: DBTable = {
       key: 'group_id',
       type: 'INT(11)',
       join_table: {
-        type: 'INNER',
+        type: 'LEFT',
         table: 'team_group',
         fieldsMap: {
           name: 'group_name',
