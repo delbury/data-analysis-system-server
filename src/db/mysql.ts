@@ -297,6 +297,9 @@ export class DB<T extends {}> {
         const valList: string[] = Array.isArray(val) ? val : [val];
 
         const filter = valList.map(v => {
+          // 格式化 key
+          key = `\`${this.tableName}\`.\`${key}\``;
+
           // 范围类型
           if(isRange) {
             // 判断是否是日期类型
@@ -306,15 +309,15 @@ export class DB<T extends {}> {
               v = `'${v}'`;
             }
 
-            if(isStart) return `\`${key}\`>=${v}`;
-            return `\`${key}\`<=${v}`;
+            if(isStart) return `${key}>=${v}`;
+            return `${key}<=${v}`;
           }
 
           if(numberReg.test(col.type)) {
-            return `\`${key}\`='${v}'`;
+            return `${key}='${v}'`;
           } else {
             v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
-            return `\`${key}\` LIKE '%${v}%'`;
+            return `${key} LIKE '%${v}%'`;
           }
         }).join(' OR ');
         res.push(filter);
