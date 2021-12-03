@@ -1,15 +1,17 @@
 import Router from 'koa-router';
 import { DB, createTable } from '../db/mysql';
+import { WorkbenchTable, TeamGroupTable, StaffTable, RoleTable } from '../../types/tables';
 import workbenchTableConfig from '../db/tables/workbench_table';
 import teamGroupTableConfig from '../db/tables/team_group_table';
 import staffTableConfig from '../db/tables/staff_table';
-import { WorkbenchTable, TeamGroupTable, StaffTable } from '../../types/tables';
+import roleTableConfig from '../db/tables/role_table';
 
 const router = new Router();
 
 const dbWorkbench = new DB<WorkbenchTable>('workbench', { includeFields: ['created_time', 'id'] });
 const dbTeamGroup = new DB<TeamGroupTable>('team_group', { includeFields: ['created_time', 'id'] });
 const dbStaff = new DB<StaffTable>('staff', { includeFields: ['created_time', 'id'] });
+const dbRole = new DB<RoleTable>('role', { includeFields: ['created_time', 'id'] });
 
 // 初始化数据
 const teamGroupInitData: Partial<TeamGroupTable>[] = [
@@ -31,6 +33,9 @@ const teamGroupInitData: Partial<TeamGroupTable>[] = [
   { name: '维创' },
   { name: '技术组' },
 ];
+const roleInitData: Partial<RoleTable>[] = [
+  { name: '管理员', tag: 'admin' },
+];
 
 router.get('/test', async (ctx) => {
 
@@ -47,6 +52,9 @@ router.get('/test', async (ctx) => {
 
   await createTable(staffTableConfig);
   await dbStaff.insertTestData(4);
+
+  await createTable(roleTableConfig);
+  await dbRole.insert(roleInitData);
 
   ctx.body = {
     msg: 'ok',

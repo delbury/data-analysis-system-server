@@ -2,6 +2,7 @@ import Router from 'koa-router';
 import workbench from './workbench';
 import teamgroup from './teamgroup';
 import staff from './staff';
+import role from './role';
 
 import test from './test';
 
@@ -12,6 +13,7 @@ const controllers: { baseUrl: string, router: Router }[] = [
   workbench,
   teamgroup,
   staff,
+  role,
 ];
 
 const router = new Router();

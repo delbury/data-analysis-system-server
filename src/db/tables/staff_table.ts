@@ -10,15 +10,22 @@ const table: DBTable = {
     },
     {
       key: 'code',
-      type: 'CHAR(10)',
+      type: 'CHAR(20)',
     },
     {
       key: 'phone',
-      type: 'CHAR(15)',
+      type: 'CHAR(20)',
     },
     {
-      key: 'company',
-      type: 'VARCHAR(100)',
+      key: 'group_id',
+      type: 'INT(11)',
+      join_table: {
+        type: 'LEFT',
+        table: 'team_group',
+        fieldsMap: {
+          name: 'group_name',
+        },
+      },
     },
     {
       key: 'job',

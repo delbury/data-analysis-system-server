@@ -10,8 +10,18 @@ export const createRouter = <T>(db: DB<T>) => {
       const pageSize = Number(ctx.query.pageSize) || 20;
       const pageNumber = Number(ctx.query.pageNumber) || 1;
       const all = Number(ctx.query.all) || 0;
+      const orderBy = (ctx.query.orderBy || 'created_time') as any;
+      // 默认降序
+      const order = ctx.query.order === 'asc' ? 'asc' : 'desc';
+      // 其他查询条件
+      const filters = { ...(ctx.query ?? {}) };
+      delete filters.pageSize;
+      delete filters.pageNumber;
+      delete filters.all;
+      delete filters.orderBy;
+      delete filters.order;
 
-      const res = await db.search({ pageSize, pageNumber, all });
+      const res = await db.search({ pageSize, pageNumber, all, orderBy, order }, db.resolveFilters(filters));
       ctx.body = {
         code: 200,
         data: {

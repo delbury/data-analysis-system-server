@@ -9,6 +9,7 @@ import moment from 'moment';
 import workbenchTable from './tables/workbench_table';
 import teamGroupTable from './tables/team_group_table';
 import staffTable from './tables/staff_table';
+import roleTable from './tables/role_table';
 
 // 数据库 table 列参数 map
 const getMap = (table: DBTable) => keyBy(table.columns, (col) => col.key);
@@ -16,6 +17,7 @@ const DB_TABLE_MAP: { [key in TableNames]: Record<string, DBTableCol>} = {
   workbench: getMap(workbenchTable),
   team_group: getMap(teamGroupTable),
   staff: getMap(staffTable),
+  role: getMap(roleTable),
 };
 
 const mysqlConfig: ConnectionConfig = {
@@ -93,6 +95,7 @@ const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
  */
 interface DBConfig<T> {
   includeFields?: (keyof T)[];
+  insertDataValidator?: (data: Partial<T>) => void | Partial<T>;
 }
 interface SearchParams<T> {
   all?: number;
@@ -101,6 +104,17 @@ interface SearchParams<T> {
   orderBy?: keyof T;
   order?: 'asc' | 'desc';
 }
+
+// 范围类型查询条件的前缀
+const REGS = {
+  range: /^_(start|end)_/,
+  rangeStart: /^_start_/,
+  rangeEnd: /^_end_/,
+  date: /^DATE/i,
+  datetime: /^DATETIME/i,
+  time: /^TIME/i,
+  number: /^(DECIMAL|INT|TINYINT)/i,
+};
 export class DB<T extends {}> {
   // 数据库表名
   private readonly tableName: TableNames;
@@ -112,6 +126,8 @@ export class DB<T extends {}> {
   private tableIncludeFields: Set<keyof T>;
   // 数据库字段返回需要过滤的字段
   private tableExcludeFields: Set<keyof T>;
+  // 对插入数据进行校验并处理
+  private insertDataValidator: DBConfig<T>['insertDataValidator'];
 
   constructor(tableName: TableNames, config?: DBConfig<T>) {
     this.tableName = tableName;
@@ -148,9 +164,9 @@ export class DB<T extends {}> {
   // 值处理
   transferFieldValue(type: string, v: any) {
     let res: any = '';
-    if(/^DATETIME/i.test(type)) {
+    if(REGS.datetime.test(type)) {
       res = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
-    } else if(/^DATE/i.test(type)) {
+    } else if(REGS.date.test(type)) {
       res = `DATE_FORMAT('${v}','%Y-%m-%d')`;
     } else {
       res = `'${numberReg.test(type) ? Number(v) : v}'`;
@@ -165,6 +181,12 @@ export class DB<T extends {}> {
     if(!Array.isArray(datas)) datas = [datas];
 
     const sql = datas.map((data) => {
+      // 插入数据进行校验
+      const tempData = this.insertDataValidator?.(data);
+      if(tempData) {
+        data = tempData;
+      }
+
       const filteredData = this.filterField(data, true);
       // 设置默认值
       Object.entries(this.tableColumns).forEach(([k, v]) => {
@@ -236,9 +258,9 @@ export class DB<T extends {}> {
       // 格式化日期数据的查询结果
       const fieldName = !tableName ? `\`${it}\`` : `\`${tableName}\`.\`${it}\``;
       let finalFieldName: string;
-      if(/^DATETIME/i.test(col.type)) {
+      if(REGS.datetime.test(col.type)) {
         finalFieldName = `DATE_FORMAT(${fieldName},'%Y-%m-%d %H:%i:%s') AS \`${it}\``;
-      } else if(/^DATE/i.test(col.type)) {
+      } else if(REGS.date.test(col.type)) {
         finalFieldName = `DATE_FORMAT(${fieldName},'%Y-%m-%d') AS \`${it}\``;
       } else {
         finalFieldName = `${fieldName}`;
@@ -257,6 +279,48 @@ export class DB<T extends {}> {
     });
 
     return [fields, joins];
+  }
+  // 处理查询条件
+  resolveFilters(filters: Record<string, string | string[]>) {
+    const res: string[] = [];
+    Object.entries(filters).forEach(([key, val]) => {
+      // 判断是否是 range 类型的查询条件
+      const isRange = REGS.range.test(key);
+      const isStart = REGS.rangeStart.test(key);
+      if(isRange) {
+        key = key.replace(REGS.range, '');
+      }
+
+      const col = this.tableColumns[key];
+      if(col) {
+        // 构造成数组
+        const valList: string[] = Array.isArray(val) ? val : [val];
+
+        const filter = valList.map(v => {
+          // 范围类型
+          if(isRange) {
+            // 判断是否是日期类型
+            if(REGS.date.test(col.type) || REGS.datetime.test(col.type)) {
+              v = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
+            } else {
+              v = `'${v}'`;
+            }
+
+            if(isStart) return `\`${key}\`>=${v}`;
+            return `\`${key}\`<=${v}`;
+          }
+
+          if(numberReg.test(col.type)) {
+            return `\`${key}\`='${v}'`;
+          } else {
+            v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
+            return `\`${key}\` LIKE '%${v}%'`;
+          }
+        }).join(' OR ');
+        res.push(filter);
+      }
+    });
+    return res;
   }
   // 查询
   async search(params: SearchParams<T>, filter?: string[]) {
@@ -343,13 +407,13 @@ export class DB<T extends {}> {
   async insertTestData(n = 1) {
     const data = {};
     Object.entries(this.tableColumns).forEach(([k, v]) => {
-      if(/^DATETIME/i.test(v.type)) {
+      if(REGS.datetime.test(v.type)) {
         data[k] = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
-      } else if(/^TIME/i.test(v.type)) {
+      } else if(REGS.time.test(v.type)) {
         data[k] = moment(new Date()).format('HH:mm:ss');
-      } else if(/^DATE/i.test(v.type)) {
+      } else if(REGS.date.test(v.type)) {
         data[k] = moment(new Date()).format('YYYY-MM-DD');
-      } else if(/^(DECIMAL|INT|TINYINT)/i.test(v.type)) {
+      } else if(REGS.number.test(v.type)) {
         data[k] = 1;
       } else {
         data[k] = 'test';

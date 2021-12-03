@@ -5,6 +5,12 @@ const table: DBTable = {
   name: 'workbench',
   columns: [
     {
+      key: 'status',
+      type: 'TINYINT',
+      comment: '1：计划培训，2：完成培训',
+      default: 1,
+    },
+    {
       key: 'date',
       type: 'DATE',
     },
@@ -72,16 +78,41 @@ const table: DBTable = {
       type: 'VARCHAR(100)',
     },
     {
-      key: 'maintainer_id',
-      type: 'INT(11)',
+      key: 'maintainer',
+      type: 'VARCHAR(100)',
     },
+    {
+      key: 'maintainer_code',
+      type: 'VARCHAR(20)',
+    },
+    // {
+    //   key: 'maintainer_id',
+    //   type: 'INT(11)',
+    // },
     {
       key: 'train_place',
       type: 'VARCHAR(100)',
     },
+    // {
+    //   key: 'trainer_id',
+    //   type: 'INT(11)',
+    // },
     {
-      key: 'trainer_id',
-      type: 'INT(11)',
+      key: 'trainer',
+      type: 'VARCHAR(100)',
+    },
+    {
+      key: 'trainer_code',
+      type: 'VARCHAR(20)',
+    },
+    {
+      key: 'trainer_level',
+      type: 'TINYINT',
+      comment: '0：无，1：见习，2：一星，3：二星，4：三星',
+    },
+    {
+      key: 'trainer_company',
+      type: 'VARCHAR(100)',
     },
     {
       key: 'trained_count_manage',

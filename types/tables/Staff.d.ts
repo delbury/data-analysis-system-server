@@ -2,7 +2,7 @@ export interface StaffTable {
   name: string;
   code: string;
   phone: string;
-  company: string;
+  group_id: number;
   // 职系序列
   job: string;
   // 是否取得上岗资格证书

@@ -1,4 +1,6 @@
 export interface WorkbenchTable {
+  // 1：计划培训，2：完成培训
+  status: number;
   date: string;
   start_time: string;
   end_time: string;
@@ -14,9 +16,14 @@ export interface WorkbenchTable {
   train_way2: string;
   train_type: string;
   train_class: string;
-  maintainer_id: number;
+  maintainer: string;
+  maintainer_code: string;
   train_place: string;
-  trainer_id: number;
+  trainer: string;
+  trainer_code: string;
+  // 0：无，1：见习，2：一星，3：二星，4：三星
+  trainer_level: number;
+  trainer_company: string;
   trained_count_manage: number;
   trained_count_key: number;
   trained_count_product: number;
