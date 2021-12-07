@@ -46,30 +46,13 @@ const teamGroupInitData: Partial<TeamGroupTable>[] = [
 ];
 const roleInitData: Partial<RoleTable>[] = [
   { name: '管理员' },
-  { name: '管理员2' },
-  { name: '管理员' },
 ];
 const permissionInitData: Partial<PermissionTable>[] = [
   { name: '管理员权限', tags: ['all'], path: '/' },
-  { name: '管理员权限2', tags: ['all', 'all.read', 'all.write'], path: '/' },
-  { name: '管理员权限3', tags: ['all'], path: '/' },
 ];
 
 
 router.get('/test', async (ctx) => {
-  const res = await dbRole.runSql(`
-    SELECT 
-      a.id, 
-      a.*, 
-      CONCAT('[', GROUP_CONCAT(JSON_OBJECT('name', c.name, 'id', c.id)), ']') as list 
-    FROM role as a
-    LEFT JOIN middle_role_permission as b
-    ON a.id = b.role_id
-    LEFT JOIN permission as c
-    ON b.permission_id = c.id
-    GROUP BY a.id;
-  `);
-
   ctx.body = {
     msg: 'ok',
     // res,

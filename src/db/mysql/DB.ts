@@ -309,7 +309,7 @@ export class DB<T extends {}> {
           kvs.push(`'${v}'`, `y.\`${k}\``);
         });
 
-        const field = `CONCAT('[', GROUP_CONCAT(JSON_OBJECT(${kvs.join(',')})), ']') as ${key} `;
+        const field = `CONCAT('[', GROUP_CONCAT(IF(y.\`id\` IS NULL, '', JSON_OBJECT(${kvs.join(',')}))), ']') AS \`${key}\``;
         joinRes.fields.push(field);
 
         // 构造 join 表
@@ -367,6 +367,10 @@ export class DB<T extends {}> {
       list.forEach(li => {
         Array.from(this.jsonColumnsSet.keys()).forEach((key) => {
           li[key] = JSON.parse(li[key]);
+          // 处理空数组
+          // if(Array.isArray(li[key]) && typeof li[key][0] === 'object' && !li[key][0].id) {
+          //   li[key].length = 0;
+          // }
         });
       });
     }
