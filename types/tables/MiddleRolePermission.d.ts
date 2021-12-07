@@ -1,8 +1,6 @@
-export interface TeamGroupTable {
-  name: string;
-  // 1：车间，2：委外
-  type: number;
-  remark: string;
+export interface MiddleRolePermissionTable {
+  role_id: number;
+  permission_id: number;
   // 主键
   id: number;
   // 是否已删除

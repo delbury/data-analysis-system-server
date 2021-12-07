@@ -4,9 +4,4 @@ import { RoleTable } from '../../../types/tables';
 
 const db = new DB<RoleTable>('role', {});
 
-const router = createRouter(db);
-
-export default {
-  router,
-  baseUrl: '/role',
-};
+export default createRouter(db);

@@ -1,98 +1,17 @@
-import mysql, { ConnectionConfig } from 'mysql';
-import keyBy from 'lodash/keyBy';
-import { DBTable, DBTableCol } from './interface';
-import { TableNames } from '../../types/tables';
-import { numberReg } from '../../libs/common';
-import moment from 'moment';
-
-// 表配置
-import workbenchTable from './tables/workbench_table';
-import teamGroupTable from './tables/team_group_table';
-import staffTable from './tables/staff_table';
-import roleTable from './tables/role_table';
-
-// 数据库 table 列参数 map
-const getMap = (table: DBTable) => keyBy(table.columns, (col) => col.key);
-const DB_TABLE_MAP: { [key in TableNames]: Record<string, DBTableCol>} = {
-  workbench: getMap(workbenchTable),
-  team_group: getMap(teamGroupTable),
-  staff: getMap(staffTable),
-  role: getMap(roleTable),
-};
-
-const mysqlConfig: ConnectionConfig = {
-  host: 'localhost',
-  user: 'user',
-  password: '123456a',
-  // port: 3306,
-  database: 'data_analysis_system',
-};
-
-// 创建数据库
-export const createDatabase = async (cnt: mysql.Connection) => {
-  const sql = `CREATE DATABASE ${mysqlConfig.database}`;
-  await runSql(cnt, sql);
-  console.log('create database success !');
-};
-
-// 创建连接
-export const createConnection = (cb?: (cnt: mysql.Connection) => void) => {
-  const cnt = mysql.createConnection({
-    ...mysqlConfig,
-    multipleStatements: true,
-  });
-
-  cnt.connect(err => {
-    if(err) throw err;
-
-    cb?.(cnt);
-    cnt.end();
-  });
-};
-
-// 创建表
-export const createTable = (tableConfig: DBTable) => {
-  return new Promise((resolve, reject) => {
-    createConnection(async (cnt) => {
-      // 生成字段配置
-      const cols = tableConfig.columns.map(it => {
-        const opts: string[] = [`\`${it.key}\``, it.type];
-        if(it.not_null) opts.push('NOT NULL');
-        if(it.comment !== void 0) opts.push(`COMMENT '${it.comment}'`);
-        if(it.auto_increment) opts.push('AUTO_INCREMENT');
-        if(it.primary_key) opts.push('PRIMARY KEY');
-        if(it.default !== void 0) opts.push('DEFAULT ' + it.default);
-        return opts.join(' ');
-      }).join(',');
-
-      const sql = [
-        `DROP TABLE IF EXISTS \`${tableConfig.name}\``,
-        `CREATE TABLE IF NOT EXISTS \`${tableConfig.name}\`(${cols})`,
-      ].join(';');
-
-      const result = await runSql(cnt, sql);
-      console.log('database table created !');
-
-      resolve(result);
-    });
-  });
-
-};
-
-
-// 执行 sql
-const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    cnt.query(sql, (err, result, fields) => {
-      if(err) return reject(err);
-      resolve(result);
-    });
-  });
-};
-
 /**
  * 数据库操作类
  */
+import moment from 'moment';
+import { TableNames } from '../../../types/tables';
+import { DBTableCol, DBTable } from '../interface';
+import mysql from 'mysql';
+import {
+  DB_TABLE_MAP,
+  REGS,
+  runSql,
+  mysqlConfig,
+} from './config';
+
 interface DBConfig<T> {
   includeFields?: (keyof T)[];
   insertDataValidator?: (data: Partial<T>) => void | Partial<T>;
@@ -105,21 +24,15 @@ interface SearchParams<T> {
   order?: 'asc' | 'desc';
 }
 
-// 范围类型查询条件的前缀
-const REGS = {
-  range: /^_(start|end)_/,
-  rangeStart: /^_start_/,
-  rangeEnd: /^_end_/,
-  date: /^DATE/i,
-  datetime: /^DATETIME/i,
-  time: /^TIME/i,
-  number: /^(DECIMAL|INT|TINYINT)/i,
-};
 export class DB<T extends {}> {
   // 数据库表名
-  private readonly tableName: TableNames;
+  readonly tableName: TableNames;
   // 数据库字段 map
   private readonly tableColumns: Record<string, DBTableCol>;
+  // 数据库配置
+  private readonly tableConfig: DBTable;
+  // 数据库 json 字段
+  private readonly jsonColumnsSet: Set<string>;
   // 数据库连接
   private cnt: mysql.Connection | null = null;
   // 数据库字段返回包含的字段，优先级大于 tableExcludeFields
@@ -131,7 +44,14 @@ export class DB<T extends {}> {
 
   constructor(tableName: TableNames, config?: DBConfig<T>) {
     this.tableName = tableName;
-    this.tableColumns = DB_TABLE_MAP[tableName];
+    this.tableColumns = DB_TABLE_MAP[tableName].map;
+    this.tableConfig = DB_TABLE_MAP[tableName].config;
+    // 构造 json 字段 map
+    this.jsonColumnsSet = new Set(Object.keys(this.tableColumns).filter((key) => REGS.json.test(this.tableColumns[key].type)));
+    // map 中添加 join 的 json 字段
+    if(this.tableConfig.join_json_array) {
+      Object.keys(this.tableConfig.join_json_array).forEach(k => this.jsonColumnsSet.add(k));
+    }
     this.setIncludeFields(config?.includeFields);
   }
 
@@ -156,27 +76,37 @@ export class DB<T extends {}> {
         !col.forbid_write &&
         (!col.write_only_insert || isInsert)
       ) {
-        temp[k] = this.transferFieldValue(col.type, v);
+        temp[k] = this.transferFieldValue(col, v, k);
       }
     });
     return temp;
   }
   // 值处理
-  transferFieldValue(type: string, v: any) {
+  transferFieldValue(col: DBTableCol, v: any, k: string) {
+    const { type } = col;
     let res: any = '';
     if(REGS.datetime.test(type)) {
       res = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
     } else if(REGS.date.test(type)) {
       res = `DATE_FORMAT('${v}','%Y-%m-%d')`;
+    } else if(REGS.json.test(type)) {
+      // JSON 类型
+      // 具体 JSON 类型
+      if(col.json_type === 'string-array' && v?.some(it => typeof it !== 'string')) {
+        throw new Error(`${k}: must be a string array`);
+      }
+      if(col.json_type === 'object-array' && v?.some(it => typeof it !== 'object')) {
+        throw new Error(`${k}: must be a object array`);
+      }
+      res = `'${JSON.stringify(v)}'`;
     } else {
-      res = `'${numberReg.test(type) ? Number(v) : v}'`;
+      res = `'${REGS.number.test(type) ? Number(v) : v}'`;
     }
     return res;
   }
 
   // 插入
   async insert(datas: Partial<T> | Partial<T>[]) {
-    await this.createConnection();
 
     if(!Array.isArray(datas)) datas = [datas];
 
@@ -192,7 +122,7 @@ export class DB<T extends {}> {
       Object.entries(this.tableColumns).forEach(([k, v]) => {
         if(filteredData[k] === void 0 && v.create_default !== void 0) {
           const dv = typeof v.create_default === 'function' ? v.create_default() : v.create_default;
-          filteredData[k] = this.transferFieldValue(v.type, dv);
+          filteredData[k] = this.transferFieldValue(v, dv, k);
         }
       });
       const keys: string[] = [];
@@ -203,19 +133,18 @@ export class DB<T extends {}> {
           values.push(`${v}`);
         }
       });
-      const sql = `INSERT INTO ${this.tableName}(${keys.join(',')}) VALUES(${values.join(',')})`;
+      const sql = `INSERT INTO \`${this.tableName}\`(${keys.join(',')}) VALUES(${values.join(',')})`;
       return sql;
     }).join(';');
 
-    const res = await runSql(this.cnt, sql);
+    if(!sql) return;
 
-    this.closeConnection();
+    const res = await this.runSql(sql);
     return res;
   }
 
   // 更新
   async update(id: string, data: Partial<T>) {
-    await this.createConnection();
 
     const filteredData = this.filterField(data, false);
     const kvs: string[] = [];
@@ -224,21 +153,23 @@ export class DB<T extends {}> {
         kvs.push(`\`${k}\`=${v}`);
       }
     });
-    const sql = `UPDATE ${this.tableName} SET ${kvs.join(',')} WHERE id='${id}'`;
-    const res = await runSql(this.cnt, sql);
 
-    this.closeConnection();
+    const sql = `UPDATE \`${this.tableName}\` SET ${kvs.join(',')} WHERE id='${id}'`;
+    const res = await this.runSql(sql);
     return res;
   }
 
   // 删除
   async delete(id: string) {
-    await this.createConnection();
+    const sql = `DELETE FROM \`${this.tableName}\` WHERE id='${id}'`;
+    const res = await this.runSql(sql);
+    return res;
+  }
 
-    const sql = `DELETE FROM ${this.tableName} WHERE id='${id}'`;
-    const res = await runSql(this.cnt, sql);
-
-    this.closeConnection();
+  // 软删除
+  async softDelete(id: string) {
+    const sql = `UPDATE \`${this.tableName}\` SET \`is_delete\`='1' WHERE id='${id}'`;
+    const res = await this.runSql(sql);
     return res;
   }
 
@@ -256,7 +187,7 @@ export class DB<T extends {}> {
       const col = this.tableColumns[it];
 
       // 格式化日期数据的查询结果
-      const fieldName = !tableName ? `\`${it}\`` : `\`${tableName}\`.\`${it}\``;
+      const fieldName = !tableName ? `\`${it}\`` : `a.\`${it}\``;
       let finalFieldName: string;
       if(REGS.datetime.test(col.type)) {
         finalFieldName = `DATE_FORMAT(${fieldName},'%Y-%m-%d %H:%i:%s') AS \`${it}\``;
@@ -270,10 +201,10 @@ export class DB<T extends {}> {
       // 是否 join
       if(col.join_table && tableName) {
         const { table: jt, type, fieldsMap, joinedField: jf } = col.join_table;
-        const joinSql = `${type} JOIN \`${jt}\` ON \`${tableName}\`.\`${it}\`=\`${jt}\`.\`${jf ?? 'id'}\``;
+        const joinSql = `${type} JOIN \`${jt}\` AS b ON a.\`${it}\`=b.\`${jf ?? 'id'}\``;
         joins.push(joinSql);
         Object.entries(fieldsMap).forEach(([key, val]) => {
-          fields.push(`\`${jt}\`.\`${key}\` AS \`${val}\``);
+          fields.push(`b.\`${key}\` AS \`${val}\``);
         });
       }
     });
@@ -298,7 +229,7 @@ export class DB<T extends {}> {
 
         const filter = valList.map(v => {
           // 格式化 key
-          key = `\`${this.tableName}\`.\`${key}\``;
+          key = `a.\`${key}\``;
 
           // 范围类型
           if(isRange) {
@@ -313,7 +244,7 @@ export class DB<T extends {}> {
             return `${key}<=${v}`;
           }
 
-          if(numberReg.test(col.type)) {
+          if(REGS.number.test(col.type)) {
             return `${key}='${v}'`;
           } else {
             v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
@@ -326,27 +257,94 @@ export class DB<T extends {}> {
     return res;
   }
   // 查询
-  async search(params: SearchParams<T>, filter?: string[]) {
-    await this.createConnection();
-
+  async search(
+    // 通用查询参数
+    params: SearchParams<T>,
+    // 查询条件
+    filter?: string[],
+    // 其他条件
+    other?: {
+      filterDeleted?: boolean; // 是否过滤软删除的数据
+      filterJoinJson?: boolean; // 是否过滤 join 查询的数据
+    }
+  ) {
     const [fields, joins] = (() => {
+      let formatList: string[] = [];
       if(this.tableIncludeFields) {
         // 只包含
-        return this.formatField(Array.from(this.tableIncludeFields) as string[], this.tableName);
+        formatList = Array.from(this.tableIncludeFields) as string[];
       } else {
         // 排除
-        const temp = Object.keys(this.tableColumns).filter((key: any) => this.tableExcludeFields ? !this.tableExcludeFields.has(key) : true);
-        return this.formatField(temp, this.tableName);
+        formatList = Object.keys(this.tableColumns).filter((key: any) => this.tableExcludeFields ? !this.tableExcludeFields.has(key) : true);
       }
+      return this.formatField(formatList, this.tableName);
     })();
 
+    // 是否有需要 Join 的 json 字段
+    const hasJoinJson = !other?.filterJoinJson && !!this.tableConfig.join_json_array;
+    const joinRes = {
+      fields: [],
+      joinMiddle: '',
+      joinTarget: '',
+      groupBy: '',
+    };
+    // 是否 join json
+    if(hasJoinJson) {
+      const record = this.tableConfig.join_json_array;
+      Object.entries(record).forEach(([key, val]) => {
+        // 构造 json_object
+        const kvs: string[] = [];
+        // 需要查询的目标表字段
+        let fieldsMap: Record<string, string> = {};
+        if(val.fieldsMap) {
+          fieldsMap = val.fieldsMap;
+        } else {
+          // 获取目标表的全部字段配置
+          const targetTableConfig = DB_TABLE_MAP[val.targetTableName];
+          targetTableConfig.config.columns.forEach(col => {
+            fieldsMap[col.key] = col.key;
+          });
+        }
+        Object.entries(fieldsMap).forEach(([k, v]) => {
+          kvs.push(`'${v}'`, `y.\`${k}\``);
+        });
+
+        const field = `CONCAT('[', GROUP_CONCAT(JSON_OBJECT(${kvs.join(',')})), ']') as ${key} `;
+        joinRes.fields.push(field);
+
+        // 构造 join 表
+        const mainPrimaryField = val.mainTablePrimaryField ?? 'id';
+        const targetPrimaryField = val.targetTablePrimaryField ?? 'id';
+
+        joinRes.joinMiddle = `LEFT JOIN ${val.middleTableName} as x ON a.\`${mainPrimaryField}\`=x.\`${val.middleMainField}\``;
+        joinRes.joinTarget = `LEFT JOIN ${val.targetTableName} as y ON x.\`${val.middleTargetField}\`=y.\`${targetPrimaryField}\``;
+        joinRes.groupBy = `GROUP BY a.\`${mainPrimaryField}\``;
+      });
+    }
+
     // sql
-    const sqls = [`SELECT SQL_CALC_FOUND_ROWS ${fields.join(',')} FROM \`${this.tableName}\``];
+    fields.push(...joinRes.fields);
+    const sqls = [`SELECT SQL_CALC_FOUND_ROWS ${fields.join(',')} FROM \`${this.tableName}\` AS a `];
     // join
     sqls.push(...joins);
+    // join json 字段
+    if(hasJoinJson) {
+      sqls.push(joinRes.joinMiddle, joinRes.joinTarget);
+    }
     // 查询条件
+    if(other?.filterDeleted) {
+      // 过滤软删除的数据
+      if(filter) {
+        filter.push('`is_delete`=\'1\'');
+      } else {
+        filter = ['`is_delete`=\'1\''];
+      }
+    }
     if(filter?.length) {
       sqls.push(`WHERE ${(filter ?? []).join(' AND ')}`);
+    }
+    if(hasJoinJson) {
+      sqls.push(joinRes.groupBy);
     }
     // 排序
     if(params.orderBy && params.order) {
@@ -360,17 +358,28 @@ export class DB<T extends {}> {
       sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
     }
 
-    const res = await runSql(this.cnt, sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;');
-    this.closeConnection();
+    const res = await this.runSql(sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;');
+    const json = JSON.parse(JSON.stringify(res));
+    const list = json[0] as {}[];
+
+    // 处理 json 类型
+    if(this.jsonColumnsSet.size) {
+      list.forEach(li => {
+        Array.from(this.jsonColumnsSet.keys()).forEach((key) => {
+          li[key] = JSON.parse(li[key]);
+        });
+      });
+    }
+
     return {
-      list: res[0],
-      total: JSON.parse(JSON.stringify(res[1]))[0].total,
+      list,
+      total: json[1][0].total,
     };
   }
 
   // 根据 id 查询
   async detail(id: string) {
-    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`\`${this.tableName}\`.\`id\`='${id}'`])).list?.[0];
+    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`a.\`id\`='${id}'`])).list?.[0];
   }
 
   // 创建连接
@@ -423,5 +432,12 @@ export class DB<T extends {}> {
       }
     });
     return await this.insert(Array(n).fill(data));
+  }
+
+  async runSql(sql: string) {
+    await this.createConnection();
+    const res = await runSql(this.cnt, sql);
+    this.closeConnection();
+    return res;
   }
 }

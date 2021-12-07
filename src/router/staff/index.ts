@@ -4,9 +4,4 @@ import { TeamGroupTable } from '../../../types/tables';
 
 const db = new DB<TeamGroupTable>('staff', {});
 
-const router = createRouter(db);
-
-export default {
-  router,
-  baseUrl: '/staff',
-};
+export default createRouter(db);

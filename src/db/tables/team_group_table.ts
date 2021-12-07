@@ -1,5 +1,5 @@
 import { DBTable } from '../interface';
-import { commonTableColumns } from '../common';
+import { getCommonTableColumns } from '../common';
 
 const table: DBTable = {
   name: 'team_group',
@@ -9,10 +9,16 @@ const table: DBTable = {
       type: 'VARCHAR(100)',
     },
     {
+      key: 'type',
+      type: 'TINYINT',
+      comment: '1：车间，2：委外',
+      not_null: true,
+    },
+    {
       key: 'remark',
       type: 'VARCHAR(255)',
     },
-    ...commonTableColumns,
+    ...getCommonTableColumns(),
   ],
 };
 

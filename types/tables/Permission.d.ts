@@ -1,7 +1,9 @@
-export interface TeamGroupTable {
+export interface PermissionTable {
   name: string;
-  // 1：车间，2：委外
-  type: number;
+  // 页面路径
+  path: string;
+  // 权限列表
+  tags: string[];
   remark: string;
   // 主键
   id: number;

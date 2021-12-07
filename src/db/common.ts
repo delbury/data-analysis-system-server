@@ -1,15 +1,19 @@
 import { DBTableCol, DBTable } from './interface';
 import moment from 'moment';
 
+type Config = {
+  id?: Partial<DBTableCol>
+}
 
 // 基本表字段
-export const commonTableColumns: DBTableCol[] = [
+export const getCommonTableColumns: (config?: Config) => DBTableCol[] = (config = {}) => [
   {
     key: 'id',
     type: 'INT(11) UNSIGNED',
     auto_increment: true,
     primary_key: true,
     comment: '主键',
+    ...(config.id ?? {}),
   },
   {
     key: 'is_delete',

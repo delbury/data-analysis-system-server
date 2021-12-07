@@ -73,5 +73,5 @@ export const createRouter = <T>(db: DB<T>) => {
       };
     });
 
-  return router;
+  return { router, baseUrl: `/${db.tableName}` };
 };

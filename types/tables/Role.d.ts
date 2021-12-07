@@ -1,6 +1,5 @@
 export interface RoleTable {
   name: string;
-  tag: string;
   remark: string;
   // 主键
   id: number;

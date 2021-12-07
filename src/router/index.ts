@@ -1,11 +1,14 @@
 import Router from 'koa-router';
+
 import workbench from './workbench';
 import teamgroup from './teamgroup';
 import staff from './staff';
 import role from './role';
+import permission from './permission';
 
 import test from './test';
 
+// api 路径前缀
 const BASE_PATH = '/api';
 
 // 所有导入路由数组
@@ -14,6 +17,7 @@ const controllers: { baseUrl: string, router: Router }[] = [
   teamgroup,
   staff,
   role,
+  permission,
 ];
 
 const router = new Router();

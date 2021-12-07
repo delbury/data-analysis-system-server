@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import camelcase from 'camelcase';
 
-import { numberReg } from './common';
+import { numberReg, jsonReg } from './common';
 import { DBTable } from '../src/db/interface';
 
 type Modules = { default: DBTable }
@@ -62,10 +62,18 @@ function resolveTableModule(module: DBTable): string {
   module.columns.forEach(item => {
     // 处理参数
     const isNumber = numberReg.test(item.type);
+    const isJson = jsonReg.test(item.type);
+    const isStringList = item.json_type === 'string-array';
+    const isObjectList = item.json_type === 'object-array';
     if(item.comment !== void 0) {
       contents.push(`  // ${item.comment}`);
     }
-    contents.push(`  ${item.key}: ${isNumber ? 'number' : 'string'};`);
+    let valueType = 'string';
+    if(isNumber) valueType = 'number';
+    else if(isObjectList && isJson) valueType = '{}[]';
+    else if(isStringList && isJson) valueType = 'string[]';
+
+    contents.push(`  ${item.key}: ${valueType};`);
   });
   const result = `export interface ${typeName} {\n` + contents.join('\n') + '\n}\n';
   return result;

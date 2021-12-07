@@ -1,5 +1,5 @@
 import { DBTable } from '../interface';
-import { commonTableColumns } from '../common';
+import { getCommonTableColumns } from '../common';
 
 const table: DBTable = {
   name: 'workbench',
@@ -38,6 +38,7 @@ const table: DBTable = {
         table: 'team_group',
         fieldsMap: {
           name: 'group_name',
+          type: 'group_type',
         },
       },
     },
@@ -188,7 +189,7 @@ const table: DBTable = {
       key: 'remark',
       type: 'VARCHAR(255)',
     },
-    ...commonTableColumns,
+    ...getCommonTableColumns(),
   ],
 };
 

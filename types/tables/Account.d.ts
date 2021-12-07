@@ -1,7 +1,7 @@
-export interface TeamGroupTable {
+export interface AccountTable {
   name: string;
-  // 1：车间，2：委外
-  type: number;
+  account: string;
+  password: string;
   remark: string;
   // 主键
   id: number;

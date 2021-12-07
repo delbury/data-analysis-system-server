@@ -8,9 +8,4 @@ const db = new DB<WorkbenchTable>('workbench', {
   },
 });
 
-const router = createRouter(db);
-
-export default {
-  router,
-  baseUrl: '/workbench',
-};
+export default createRouter(db);
