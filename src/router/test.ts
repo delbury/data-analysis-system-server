@@ -6,14 +6,19 @@ import {
   StaffTable,
   RoleTable,
   PermissionTable,
+  AccountTable,
   MiddleRolePermissionTable,
+  MiddleAccountRoleTable,
 } from '../../types/tables';
 import workbenchTableConfig from '../db/tables/workbench_table';
 import teamGroupTableConfig from '../db/tables/team_group_table';
 import staffTableConfig from '../db/tables/staff_table';
 import roleTableConfig from '../db/tables/role_table';
 import permissionConfig from '../db/tables/permission_table';
+import accountConfig from '../db/tables/account_table';
 import middleRolePermissionConfig from '../db/tables/middle_role_permission_table';
+import middleAccountRoleConfig from '../db/tables/middle_account_role_table';
+
 
 const router = new Router();
 
@@ -22,7 +27,9 @@ const dbTeamGroup = new DB<TeamGroupTable>('team_group');
 const dbStaff = new DB<StaffTable>('staff');
 const dbRole = new DB<RoleTable>('role');
 const dbPermission = new DB<PermissionTable>('permission');
+const dbAccount = new DB<PermissionTable>('account');
 const dbMiddleRolePermission = new DB<PermissionTable>('middle_role_permission');
+const dbMiddleAccountRole = new DB<PermissionTable>('middle_account_role');
 
 // 初始化数据
 const teamGroupInitData: Partial<TeamGroupTable>[] = [
@@ -49,6 +56,11 @@ const roleInitData: Partial<RoleTable>[] = [
 ];
 const permissionInitData: Partial<PermissionTable>[] = [
   { name: '管理员权限', tags: ['all'], path: '/' },
+  { name: '全局只读', tags: ['all.read'], path: '/' },
+  { name: '培训计划完成表', tags: ['workbench'], path: '/workbench' },
+];
+const accountInitData: Partial<AccountTable>[] = [
+  { name: '管理员', account: 'admin', password: '123456a' },
 ];
 
 
@@ -78,9 +90,13 @@ router.get('/test', async (ctx) => {
   await createTable(permissionConfig);
   const resPermission = await dbPermission.insert(permissionInitData);
 
+  // 账号表
+  await createTable(accountConfig);
+  const resAccount = await dbAccount.insert(accountInitData);
+
   // 角色、权限关系中间表
   const middleRolePermissionInitData: Partial<MiddleRolePermissionTable>[] = [];
-  [[0, 0], [0, 1], [1, 1], [1, 2]].forEach(([role, perm]) => {
+  [[0, 0]].forEach(([role, perm]) => {
     middleRolePermissionInitData.push({
       role_id: resRole.length ? resRole[role].insertId : resRole.insertId,
       permission_id: resPermission.length ? resPermission[perm].insertId : resPermission.insertId,
@@ -88,6 +104,18 @@ router.get('/test', async (ctx) => {
   });
   await createTable(middleRolePermissionConfig);
   await dbMiddleRolePermission.insert(middleRolePermissionInitData);
+
+  // 账号、角色关系中间表
+  const middleAccountRoleInitData: Partial<MiddleAccountRoleTable>[] = [];
+  [[0, 0]].forEach(([role, perm]) => {
+    middleAccountRoleInitData.push({
+      role_id: resRole.length ? resRole[role].insertId : resRole.insertId,
+      account_id: resAccount.length ? resAccount[perm].insertId : resAccount.insertId,
+    });
+  });
+  await createTable(middleAccountRoleConfig);
+  await dbMiddleAccountRole.insert(middleAccountRoleInitData);
+
 
   ctx.body = {
     msg: 'ok',

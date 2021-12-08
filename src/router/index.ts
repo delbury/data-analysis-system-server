@@ -5,6 +5,8 @@ import teamgroup from './teamgroup';
 import staff from './staff';
 import role from './role';
 import permission from './permission';
+import account from './account';
+import auth from './auth';
 
 import test from './test';
 
@@ -18,6 +20,8 @@ const controllers: { baseUrl: string, router: Router }[] = [
   staff,
   role,
   permission,
+  account,
+  auth,
 ];
 
 const router = new Router();

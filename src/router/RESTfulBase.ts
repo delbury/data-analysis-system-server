@@ -1,5 +1,6 @@
 import Router from 'koa-router';
 import { DB } from '../db/mysql';
+import { Response } from '../interface';
 
 export const createRouter = <T>(db: DB<T>) => {
   const router = new Router();
@@ -21,8 +22,11 @@ export const createRouter = <T>(db: DB<T>) => {
       delete filters.orderBy;
       delete filters.order;
 
-      const res = await db.search({ pageSize, pageNumber, all, orderBy, order }, db.resolveFilters(filters));
-      ctx.body = {
+      const res = await db.search(
+        { pageSize, pageNumber, all, orderBy, order },
+        db.resolveFilters(filters, 'auto'),
+      );
+      ctx.body = <Response>{
         code: 200,
         data: {
           total: res.total,
@@ -36,7 +40,7 @@ export const createRouter = <T>(db: DB<T>) => {
       if(!id) throw Error('no id');
 
       const res = await db.detail(id);
-      ctx.body = {
+      ctx.body = <Response>{
         code: 200,
         data: res,
       };
@@ -45,8 +49,9 @@ export const createRouter = <T>(db: DB<T>) => {
     .post('/list/', async (ctx) => {
       const res = await db.insert(ctx.request.body ?? {});
 
-      ctx.body = {
+      ctx.body = <Response>{
         code: 200,
+        data: null,
       };
     })
     // 修改
@@ -56,8 +61,9 @@ export const createRouter = <T>(db: DB<T>) => {
 
       const res = await db.update(id, ctx.request.body ?? {});
 
-      ctx.body = {
+      ctx.body = <Response>{
         code: 200,
+        data: null,
       };
     })
     // 删除
@@ -65,11 +71,12 @@ export const createRouter = <T>(db: DB<T>) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
-      const res = await db.delete(id);
+      const res = await db.delete(id, { fullDelete: true });
       if(!res.affectedRows) throw Error('no such id');
 
-      ctx.body = {
+      ctx.body = <Response>{
         code: 200,
+        data: null,
       };
     });
 

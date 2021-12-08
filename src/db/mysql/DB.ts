@@ -3,7 +3,7 @@
  */
 import moment from 'moment';
 import { TableNames } from '../../../types/tables';
-import { DBTableCol, DBTable } from '../interface';
+import { DBTableCol, DBTable, JoinJsonConfig } from '../interface';
 import mysql from 'mysql';
 import {
   DB_TABLE_MAP,
@@ -23,30 +23,42 @@ interface SearchParams<T> {
   orderBy?: keyof T;
   order?: 'asc' | 'desc';
 }
+type MiddleData = { data: number[], config: JoinJsonConfig };
 
+// 每张表的默认主键
+const PRIMARY_FIELD = 'id';
 export class DB<T extends {}> {
-  // 数据库表名
-  readonly tableName: TableNames;
-  // 数据库字段 map
-  private readonly tableColumns: Record<string, DBTableCol>;
-  // 数据库配置
-  private readonly tableConfig: DBTable;
+  // 当前数据库表名
+  readonly _tableName: TableNames;
+  // 数据库当前使用的表名
+  private _currentTableName: TableNames | null = null;
   // 数据库 json 字段
   private readonly jsonColumnsSet: Set<string>;
   // 数据库连接
   private cnt: mysql.Connection | null = null;
   // 数据库字段返回包含的字段，优先级大于 tableExcludeFields
-  private tableIncludeFields: Set<keyof T>;
+  private tableIncludeFields: Set<keyof T> | null = null;
   // 数据库字段返回需要过滤的字段
-  private tableExcludeFields: Set<keyof T>;
+  private tableExcludeFields: Set<keyof T> | null = null;
   // 对插入数据进行校验并处理
   private insertDataValidator: DBConfig<T>['insertDataValidator'];
 
+  // 数据库当前操作的表名
+  get tableName() {
+    return this._currentTableName ?? this._tableName;
+  }
+  // 数据库字段 map
+  get tableColumns() {
+    return DB_TABLE_MAP[this.tableName].map;
+  }
+  // 数据库配置
+  get tableConfig() {
+    return DB_TABLE_MAP[this.tableName].config;
+  }
+
   constructor(tableName: TableNames, config?: DBConfig<T>) {
-    this.tableName = tableName;
-    this.tableColumns = DB_TABLE_MAP[tableName].map;
-    this.tableConfig = DB_TABLE_MAP[tableName].config;
-    // 构造 json 字段 map
+    this._tableName = tableName;
+    // 构造本表 json 字段 map
     this.jsonColumnsSet = new Set(Object.keys(this.tableColumns).filter((key) => REGS.json.test(this.tableColumns[key].type)));
     // map 中添加 join 的 json 字段
     if(this.tableConfig.join_json_array) {
@@ -55,17 +67,65 @@ export class DB<T extends {}> {
     this.setIncludeFields(config?.includeFields);
   }
 
-  // 设置数据库查询字段
+  // 设置当前使用的表名
+  setCurrentTable(table: TableNames) {
+    this._currentTableName = table;
+  }
+  // 清除当前设置的表名
+  clearCurrentTable() {
+    this._currentTableName = null;
+  }
+
+  // 设置数据库包含的查询字段
   setIncludeFields(fields?: (keyof T)[]) {
     this.tableIncludeFields = fields ? new Set(fields) : null;
   }
+  // 设置数据库排除的查询字段
   setExcludeFields(fields?: (keyof T)[]) {
     this.tableExcludeFields = fields ? new Set(fields) : null;
   }
 
+  // 更新关联关系表
+  async updateMiddleTable(id: number | string, mds: MiddleData[], isInsert: boolean) {
+    // 插入时切无关联关系，则不需要处理
+    if(isInsert && !mds.length) return;
+
+    // 非新增，先删除所有已有的关联关系
+    if(!isInsert) {
+      await this.deleteMiddleTable(id, mds);
+    }
+
+    // 再添加新的关联关系
+    await this.insertMiddleTable(id, mds);
+  }
+  // 新增
+  async insertMiddleTable(id: number | string, mds: MiddleData[]) {
+    for(const md of mds) {
+      this.setCurrentTable(md.config.middleTableName);
+      const datas = md.data.map(tid => ({
+        [md.config.middleMainField]: id,
+        [md.config.middleTargetField]: tid,
+      }));
+      await this.insert(datas as unknown as Partial<T>[]);
+      this.clearCurrentTable();
+    }
+  }
+  // 删除
+  async deleteMiddleTable(id: number | string, mds: MiddleData[]) {
+    for(const md of mds) {
+      this.setCurrentTable(md.config.middleTableName);
+      await this.delete(id, { idKey: md.config.middleMainField });
+      this.clearCurrentTable();
+    }
+  }
+
   // 数据字段处理
-  filterField(params: Partial<T>, isInsert: boolean): Partial<T> {
+  filterField(params: Partial<T>, isInsert: boolean) {
+    // 过滤后的数据
     const temp: Partial<T> = {};
+    // 需要进行中间表处理的数据及其配置
+    const middleDatas: MiddleData[] = [];
+
     // 过滤数据库中存在的字段
     Object.entries(params).forEach(([k, v]) => {
       const col = this.tableColumns[k];
@@ -78,8 +138,17 @@ export class DB<T extends {}> {
       ) {
         temp[k] = this.transferFieldValue(col, v, k);
       }
+
+      // 通过中间表增加关联
+      const jsonConfig = this.tableConfig?.join_json_array?.[k];
+      if(jsonConfig) {
+        middleDatas.push({
+          data: v as number[], // 需要增加关联关系的目标表 id 列表
+          config: jsonConfig, // 配置项
+        });
+      }
     });
-    return temp;
+    return { filteredData: temp, middleDatas };
   }
   // 值处理
   transferFieldValue(col: DBTableCol, v: any, k: string) {
@@ -107,8 +176,9 @@ export class DB<T extends {}> {
 
   // 插入
   async insert(datas: Partial<T> | Partial<T>[]) {
-
     if(!Array.isArray(datas)) datas = [datas];
+    // 关联关系数组
+    const middleDatasList: MiddleData[][] = [];
 
     const sql = datas.map((data) => {
       // 插入数据进行校验
@@ -117,7 +187,8 @@ export class DB<T extends {}> {
         data = tempData;
       }
 
-      const filteredData = this.filterField(data, true);
+      const { filteredData, middleDatas } = this.filterField(data, true);
+      middleDatasList.push(middleDatas);
       // 设置默认值
       Object.entries(this.tableColumns).forEach(([k, v]) => {
         if(filteredData[k] === void 0 && v.create_default !== void 0) {
@@ -140,13 +211,22 @@ export class DB<T extends {}> {
     if(!sql) return;
 
     const res = await this.runSql(sql);
+    if(res.length) {
+      // 插入多个
+      for(let i = 0; i < middleDatasList.length; i++) {
+        await this.updateMiddleTable(res[i].insertId, middleDatasList[i], true);
+      }
+    } else {
+      // 插入单个
+      await this.updateMiddleTable(res.insertId, middleDatasList[0], true);
+    }
     return res;
   }
 
   // 更新
-  async update(id: string, data: Partial<T>) {
+  async update(id: string | number, data: Partial<T>) {
 
-    const filteredData = this.filterField(data, false);
+    const { filteredData, middleDatas } = this.filterField(data, false);
     const kvs: string[] = [];
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
@@ -154,21 +234,52 @@ export class DB<T extends {}> {
       }
     });
 
-    const sql = `UPDATE \`${this.tableName}\` SET ${kvs.join(',')} WHERE id='${id}'`;
+    const sql = `UPDATE \`${this.tableName}\` SET ${kvs.join(',')} WHERE \`${PRIMARY_FIELD}\`='${id}'`;
     const res = await this.runSql(sql);
+    await this.updateMiddleTable(id, middleDatas, false);
     return res;
   }
 
   // 删除
-  async delete(id: string) {
-    const sql = `DELETE FROM \`${this.tableName}\` WHERE id='${id}'`;
+  async delete(
+    // 要删除的 id
+    id: string | number | (string | number)[],
+    opts?: {
+      idKey?: string; // 要删除的 id 对应的字段
+      fullDelete?: boolean; // 是否完全删除，包括关联的中间表
+    }
+  ) {
+    const { idKey = PRIMARY_FIELD, fullDelete } = opts ?? {};
+
+    // 过滤条件
+    const filters: string[] = [];
+    if(Array.isArray(id)) {
+      const ids = id.map(it => `'${it}'`).join(',');
+      filters.push(`\`${idKey}\` IN (${ids})`);
+    } else {
+      filters.push(`\`${idKey}\`='${id}'`);
+    }
+
+    const sql = `DELETE FROM \`${this.tableName}\` WHERE ${filters.join(' AND ')}`;
     const res = await this.runSql(sql);
+
+    // 删除中间表的关联关系
+    if(fullDelete && this.tableConfig.join_json_array) {
+      const idList = Array.isArray(id) ? id : [id];
+      for(const i of idList) {
+        await this.deleteMiddleTable(
+          i,
+          Object.values(this.tableConfig.join_json_array).map(it => ({ data: [], config: it }))
+        );
+      }
+    }
+
     return res;
   }
 
   // 软删除
   async softDelete(id: string) {
-    const sql = `UPDATE \`${this.tableName}\` SET \`is_delete\`='1' WHERE id='${id}'`;
+    const sql = `UPDATE \`${this.tableName}\` SET \`is_delete\`='1' WHERE \`${PRIMARY_FIELD}\`='${id}'`;
     const res = await this.runSql(sql);
     return res;
   }
@@ -201,7 +312,7 @@ export class DB<T extends {}> {
       // 是否 join
       if(col.join_table && tableName) {
         const { table: jt, type, fieldsMap, joinedField: jf } = col.join_table;
-        const joinSql = `${type} JOIN \`${jt}\` AS b ON a.\`${it}\`=b.\`${jf ?? 'id'}\``;
+        const joinSql = `${type} JOIN \`${jt}\` AS b ON a.\`${it}\`=b.\`${jf ?? PRIMARY_FIELD}\``;
         joins.push(joinSql);
         Object.entries(fieldsMap).forEach(([key, val]) => {
           fields.push(`b.\`${key}\` AS \`${val}\``);
@@ -212,7 +323,7 @@ export class DB<T extends {}> {
     return [fields, joins];
   }
   // 处理查询条件
-  resolveFilters(filters: Record<string, string | string[]>) {
+  resolveFilters(filters: Record<string, string | string[]>, type: 'auto' | 'equal' | 'like' = 'equal') {
     const res: string[] = [];
     Object.entries(filters).forEach(([key, val]) => {
       // 判断是否是 range 类型的查询条件
@@ -248,7 +359,11 @@ export class DB<T extends {}> {
             return `${key}='${v}'`;
           } else {
             v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
-            return `${key} LIKE '%${v}%'`;
+            if(type === 'equal') {
+              return `${key}=BINARY '${v}'`;
+            } else {
+              return `${key} LIKE '%${v}%'`;
+            }
           }
         }).join(' OR ');
         res.push(filter);
@@ -309,12 +424,12 @@ export class DB<T extends {}> {
           kvs.push(`'${v}'`, `y.\`${k}\``);
         });
 
-        const field = `CONCAT('[', GROUP_CONCAT(IF(y.\`id\` IS NULL, '', JSON_OBJECT(${kvs.join(',')}))), ']') AS \`${key}\``;
+        const field = `CONCAT('[', GROUP_CONCAT(IF(y.\`${PRIMARY_FIELD}\` IS NULL, '', JSON_OBJECT(${kvs.join(',')}))), ']') AS \`${key}\``;
         joinRes.fields.push(field);
 
         // 构造 join 表
-        const mainPrimaryField = val.mainTablePrimaryField ?? 'id';
-        const targetPrimaryField = val.targetTablePrimaryField ?? 'id';
+        const mainPrimaryField = val.mainTablePrimaryField ?? PRIMARY_FIELD;
+        const targetPrimaryField = val.targetTablePrimaryField ?? PRIMARY_FIELD;
 
         joinRes.joinMiddle = `LEFT JOIN ${val.middleTableName} as x ON a.\`${mainPrimaryField}\`=x.\`${val.middleMainField}\``;
         joinRes.joinTarget = `LEFT JOIN ${val.targetTableName} as y ON x.\`${val.middleTargetField}\`=y.\`${targetPrimaryField}\``;
@@ -360,17 +475,13 @@ export class DB<T extends {}> {
 
     const res = await this.runSql(sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;');
     const json = JSON.parse(JSON.stringify(res));
-    const list = json[0] as {}[];
+    const list = json[0] as T[];
 
     // 处理 json 类型
     if(this.jsonColumnsSet.size) {
       list.forEach(li => {
         Array.from(this.jsonColumnsSet.keys()).forEach((key) => {
           li[key] = JSON.parse(li[key]);
-          // 处理空数组
-          // if(Array.isArray(li[key]) && typeof li[key][0] === 'object' && !li[key][0].id) {
-          //   li[key].length = 0;
-          // }
         });
       });
     }
@@ -383,7 +494,7 @@ export class DB<T extends {}> {
 
   // 根据 id 查询
   async detail(id: string) {
-    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`a.\`id\`='${id}'`])).list?.[0];
+    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`a.\`${PRIMARY_FIELD}\`='${id}'`])).list?.[0];
   }
 
   // 创建连接

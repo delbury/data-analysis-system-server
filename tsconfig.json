@@ -1,5 +1,13 @@
 {
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  },
   "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
     "rootDir": ".",
     "esModuleInterop": true,
     "lib": ["esnext"]

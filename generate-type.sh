@@ -1,4 +1,4 @@
-node --loader ts-node/esm libs/generateTableType.ts
+npx ts-node -T libs/generateTableType.ts
 
 SOURCE_DIR=./types/tables
 OUTPUT_DIR=../data-analysis-system-web/types/db-table-type
