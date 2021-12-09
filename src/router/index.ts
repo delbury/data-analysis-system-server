@@ -13,6 +13,9 @@ import test from './test';
 // api 路径前缀
 const BASE_PATH = '/api';
 
+// auth 路径
+export const AUTH_PATH_REG = new RegExp(`${BASE_PATH}${auth.baseUrl}/`, 'i');
+
 // 所有导入路由数组
 const controllers: { baseUrl: string, router: Router }[] = [
   workbench,
