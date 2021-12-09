@@ -5,13 +5,14 @@
   "author": "delbury",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon --watch src src/app.ts",
+    "dev": "nodemon src/app.ts",
     "types": "sh ./generate-type.sh",
     "reinit": "sh ./reinit.sh"
   },
   "devDependencies": {
     "@types/koa": "^2.13.4",
     "@types/koa-router": "^7.4.4",
+    "@types/koa-session": "^5.10.4",
     "@types/lodash": "^4.14.177",
     "@types/node": "^16.11.7",
     "@typescript-eslint/eslint-plugin": "^5.3.1",
@@ -21,6 +22,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "nodemon": "^2.0.15",
     "ts-node": "^10.4.0",
+    "tsconfig-paths": "^3.12.0",
     "typescript": "^4.4.4"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "koa": "^2.13.4",
     "koa-body": "^4.2.0",
     "koa-router": "^10.1.1",
+    "koa-session": "^6.2.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
     "mysql": "^2.18.1"

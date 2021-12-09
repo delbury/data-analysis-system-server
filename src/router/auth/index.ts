@@ -1,6 +1,6 @@
 
 import Router from 'koa-router';
-import { Response } from '../../interface';
+import { Response } from '~/interface';
 import { db as dbAccount } from '../account';
 
 const router = new Router();

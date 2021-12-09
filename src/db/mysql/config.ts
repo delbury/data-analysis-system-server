@@ -1,7 +1,7 @@
 import mysql, { ConnectionConfig } from 'mysql';
 import keyBy from 'lodash/keyBy';
 import { DBTable, DBTableCol } from '../interface';
-import { TableNames } from '../../../types/tables';
+import { TableNames } from '~types/tables';
 
 // 表配置
 import workbenchTable from '../tables/workbench_table';

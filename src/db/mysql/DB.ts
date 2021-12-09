@@ -2,7 +2,7 @@
  * 数据库操作类
  */
 import moment from 'moment';
-import { TableNames } from '../../../types/tables';
+import { TableNames } from '~types/tables';
 import { DBTableCol, DBTable, JoinJsonConfig } from '../interface';
 import mysql from 'mysql';
 import {

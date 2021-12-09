@@ -1,4 +1,4 @@
-import { TableNames } from '../../types/tables';
+import { TableNames } from '~types/tables';
 
 // 表字段配置
 export interface DBTableCol {

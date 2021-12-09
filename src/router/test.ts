@@ -9,7 +9,7 @@ import {
   AccountTable,
   MiddleRolePermissionTable,
   MiddleAccountRoleTable,
-} from '../../types/tables';
+} from '~types/tables';
 import workbenchTableConfig from '../db/tables/workbench_table';
 import teamGroupTableConfig from '../db/tables/team_group_table';
 import staffTableConfig from '../db/tables/staff_table';

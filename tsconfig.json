@@ -10,7 +10,15 @@
     "moduleResolution": "node",
     "rootDir": ".",
     "esModuleInterop": true,
-    "lib": ["esnext"]
+    "lib": ["esnext"],
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["src/*"],
+      "~types/*": ["types/*"],
+      "~tables/*": ["src/db/tables/*"],
+      "~libs/*": ["libs/*"],
+    },
   },
   "exclude": ["node_modules"],
+  "include": ["src", "libs"]
 }
