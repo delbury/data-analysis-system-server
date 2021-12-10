@@ -71,16 +71,16 @@ router.get('/test', async (ctx) => {
   };
 }).get('/test/init', async (ctx) => {
   // 培训计划完成表
-  // await createTable(workbenchTableConfig);
-  // await dbWorkbench.insertTestData(20);
+  await createTable(workbenchTableConfig);
+  await dbWorkbench.insertTestData(20);
 
   // 班组表
-  // await createTable(teamGroupTableConfig);
-  // await dbTeamGroup.insert(teamGroupInitData);
+  await createTable(teamGroupTableConfig);
+  await dbTeamGroup.insert(teamGroupInitData);
 
   // 人员表
-  // await createTable(staffTableConfig);
-  // await dbStaff.insertTestData(4);
+  await createTable(staffTableConfig);
+  await dbStaff.insertTestData(4);
 
   // 角色表
   await createTable(roleTableConfig);

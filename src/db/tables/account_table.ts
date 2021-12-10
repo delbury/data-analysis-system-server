@@ -3,6 +3,7 @@ import { getCommonTableColumns } from '../common';
 
 const table: DBTable = {
   name: 'account',
+  unique: ['account'],
   join_json_array: {
     roles: {
       middleTableName: 'middle_account_role',

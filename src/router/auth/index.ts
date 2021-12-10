@@ -60,16 +60,34 @@ router
   .put('/password', async (ctx) => {
     const { oldPassword, newPassword, newPasswordCheck } = ctx.request.body;
 
-    if(newPassword !== newPasswordCheck) {
-      ctx.body = {
-        code: 400,
-        msg: '两次输入的新密码不一致',
-      };
+    let status = 200;
+    let msg = null;
+
+    if(!ctx.session.userInfo) {
+      status = 400;
+      msg = '请先登录';
+    } else if(newPassword !== newPasswordCheck) {
+      status = 400;
+      msg = '两次输入的新密码不一致';
     } else {
-      ctx.body = {
-        code: 200,
-      };
+      const res = await dbAccount.search(
+        { pageNumber: 1, pageSize: 1 },
+        dbAccount.resolveFilters({ account: ctx.session.userInfo.account, password: oldPassword })
+      );
+      if(!res.total) {
+        status = 400;
+        msg = '旧密码错误';
+      } else {
+        const id = res.list[0].id;
+        await dbAccount.update(id, { password: newPassword });
+      }
     }
+
+    ctx.status = status;
+    ctx.body = {
+      code: status,
+      msg,
+    };
   });
 
 export default {
