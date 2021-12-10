@@ -18,8 +18,8 @@ interface DBConfig<T> {
 }
 interface SearchParams<T> {
   all?: number;
-  pageSize: number;
-  pageNumber: number;
+  pageSize?: number;
+  pageNumber?: number;
   orderBy?: keyof T;
   order?: 'asc' | 'desc';
 }
@@ -323,7 +323,10 @@ export class DB<T extends {}> {
     return [fields, joins];
   }
   // 处理查询条件
-  resolveFilters(filters: Record<string, string | string[]>, type: 'auto' | 'equal' | 'like' = 'equal') {
+  resolveFilters(
+    filters: Record<string, string | string[]>,
+    type: 'auto' | 'equal' | 'like' = 'equal'
+  ) {
     const res: string[] = [];
     Object.entries(filters).forEach(([key, val]) => {
       // 判断是否是 range 类型的查询条件
@@ -336,7 +339,7 @@ export class DB<T extends {}> {
       const col = this.tableColumns[key];
       if(col) {
         // 构造成数组
-        const valList: string[] = Array.isArray(val) ? val : [val];
+        const valList: string[] = (Array.isArray(val) ? val : [val]);
 
         const filter = valList.map(v => {
           // 格式化 key

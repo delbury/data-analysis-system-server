@@ -58,6 +58,7 @@ async function main() {
 // 处理导入的table模块
 function resolveTableModule(module: DBTable): string {
   const typeName = `${camelcase(module.name, { pascalCase: true })}Table`;
+  const imports: string[] = [];
   const contents: string[] = [];
   module.columns.forEach(item => {
     // 处理参数
@@ -74,8 +75,42 @@ function resolveTableModule(module: DBTable): string {
     else if(isStringList && isJson) valueType = 'string[]';
 
     contents.push(`  ${item.key}: ${valueType};`);
+
+    // 是否存在 join
+    if(item.join_table) {
+      // import 其他表
+      const fileName = camelcase(item.join_table.table, { pascalCase: true });
+      const tableType = `${fileName}Table`;
+      imports.push(`import { ${tableType} } from './${fileName}';`);
+
+      Object.entries(item.join_table.fieldsMap).forEach(([key, val]) => {
+        contents.push(`  ${val}: ${tableType}['${key}'];`);
+      });
+    }
   });
-  const result = `export interface ${typeName} {\n` + contents.join('\n') + '\n}\n';
+
+  // 整张表是否存在 join json
+  if(module.join_json_array) {
+    Object.entries(module.join_json_array).forEach(([key, val]) => {
+      const fileName = camelcase(val.targetTableName, { pascalCase: true });
+      const tableType = `${fileName}Table`;
+      imports.push(`import { ${tableType} } from './${fileName}';`);
+
+      if(val.fieldsMap) {
+        // 部分字段
+        contents.push(`  ${key}: {`);
+        Object.entries(val.fieldsMap).forEach(([k, v]) => {
+          contents.push(`    ${v}: ${tableType}['${k}'];`);
+        });
+        contents.push('  }[];');
+      } else {
+        contents.push(`  ${key}: ${tableType}[];`);
+      }
+    });
+  }
+
+  const result = (imports.length ? (imports.join('\n') + '\n\n') : '') +
+    `export interface ${typeName} {\n` + contents.join('\n') + '\n}\n';
   return result;
 }
 

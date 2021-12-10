@@ -1,3 +1,5 @@
+import { TeamGroupTable } from './TeamGroup';
+
 export interface WorkbenchTable {
   // 1：计划培训，2：完成培训
   status: number;
@@ -7,6 +9,8 @@ export interface WorkbenchTable {
   company: string;
   dept: string;
   group_id: number;
+  group_name: TeamGroupTable['name'];
+  group_type: TeamGroupTable['type'];
   project_code: string;
   train_project_name: string;
   train_course_name: string;

@@ -1,3 +1,5 @@
+import { RoleTable } from './Role';
+
 export interface AccountTable {
   name: string;
   account: string;
@@ -10,4 +12,5 @@ export interface AccountTable {
   // 创建时间
   created_time: string;
   creater_id: number;
+  roles: RoleTable[];
 }

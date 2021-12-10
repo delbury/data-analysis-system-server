@@ -1,8 +1,12 @@
+import { TeamGroupTable } from './TeamGroup';
+
 export interface StaffTable {
   name: string;
   code: string;
   phone: string;
   group_id: number;
+  group_name: TeamGroupTable['name'];
+  group_type: TeamGroupTable['type'];
   // 职系序列
   job: string;
   // 是否取得上岗资格证书

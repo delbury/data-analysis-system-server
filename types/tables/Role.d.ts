@@ -1,3 +1,5 @@
+import { PermissionTable } from './Permission';
+
 export interface RoleTable {
   name: string;
   remark: string;
@@ -8,4 +10,5 @@ export interface RoleTable {
   // 创建时间
   created_time: string;
   creater_id: number;
+  permissions: PermissionTable[];
 }

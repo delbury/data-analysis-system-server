@@ -2,6 +2,7 @@
 import Router from 'koa-router';
 import { Response } from '~/interface';
 import { db as dbAccount } from '../account';
+import { db as dbRole } from '../role';
 
 const router = new Router();
 
@@ -25,7 +26,13 @@ router
       const info = res.list[0];
       delete info.password;
 
+      // 查询所有权限
+      const roleIds = info.roles.map(it => `${it.id}`);
+      const roles = await dbRole.search({ all: 1 }, dbRole.resolveFilters({ id: roleIds }));
+      const permissionsSet = new Set(roles.list.map(it => it.permissions).flat().map(it => it.tags).flat());
+
       ctx.session.userInfo = info;
+      ctx.session.permissionsSet = permissionsSet;
 
       ctx.body = <Response>{
         code: 200,
@@ -43,12 +50,26 @@ router
       data: null,
     };
   })
-  // 获取用户信息
+  // 获取已登录用户信息
   .get('/info', async (ctx) => {
     ctx.body = {
       code: 200,
-      data: !ctx.session?.userInfo ?? null,
+      data: ctx.session?.userInfo ?? null,
     };
+  })
+  .put('/password', async (ctx) => {
+    const { oldPassword, newPassword, newPasswordCheck } = ctx.request.body;
+
+    if(newPassword !== newPasswordCheck) {
+      ctx.body = {
+        code: 400,
+        msg: '两次输入的新密码不一致',
+      };
+    } else {
+      ctx.body = {
+        code: 200,
+      };
+    }
   });
 
 export default {
