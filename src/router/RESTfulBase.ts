@@ -1,8 +1,16 @@
 import Router from 'koa-router';
 import { DB } from '../db/mysql';
 import { Response } from '../interface';
+import Koa from 'koa';
+import { CommonTable } from '~types/tables/Common';
 
-export const createRouter = <T>(db: DB<T>) => {
+interface Hanlders {
+  afterInseart?: (ctx: Koa.ParameterizedContext, id: string) => void;
+  afterUpdate?: (ctx: Koa.ParameterizedContext, id: string) => void;
+  afterDelete?: (ctx: Koa.ParameterizedContext, id: string) => void;
+}
+
+export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlders = {}) => {
   const router = new Router();
 
   router
@@ -49,6 +57,13 @@ export const createRouter = <T>(db: DB<T>) => {
     .post('/list/', async (ctx) => {
       const res = await db.insert(ctx.request.body ?? {});
 
+      // 设置创建者
+      await db.update(res.insertId as string, { creater_id: ctx.session.userInfo.id as number }, true);
+      // 添加成功后的回调
+      if(handlers.afterInseart) {
+        await handlers.afterInseart(ctx, res.insertId as string);
+      }
+
       ctx.body = <Response>{
         code: 200,
         data: null,
@@ -60,6 +75,13 @@ export const createRouter = <T>(db: DB<T>) => {
       if(!id) throw Error('no id');
 
       const res = await db.update(id, ctx.request.body ?? {});
+
+      // 修改更新者
+      await db.update(res.insertId as string, { last_modified_account_id: ctx.session.userInfo.id as number }, true);
+      // 修改成功后的回调
+      if(handlers.afterUpdate) {
+        await handlers.afterUpdate(ctx, id);
+      }
 
       ctx.body = <Response>{
         code: 200,
@@ -73,6 +95,11 @@ export const createRouter = <T>(db: DB<T>) => {
 
       const res = await db.delete(id, { fullDelete: true });
       if(!res.affectedRows) throw Error('no such id');
+
+      // 删除成功后的回调
+      if(handlers.afterDelete) {
+        await handlers.afterDelete(ctx, id);
+      }
 
       ctx.body = <Response>{
         code: 200,

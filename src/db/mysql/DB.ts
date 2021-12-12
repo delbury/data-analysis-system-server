@@ -3,6 +3,7 @@
  */
 import moment from 'moment';
 import { TableNames } from '~types/tables';
+import { CommonTable } from '~types/tables/Common';
 import { DBTableCol, DBTable, JoinJsonConfig } from '../interface';
 import mysql from 'mysql';
 import {
@@ -27,7 +28,7 @@ type MiddleData = { data: number[], config: JoinJsonConfig };
 
 // 每张表的默认主键
 const PRIMARY_FIELD = 'id';
-export class DB<T extends {}> {
+export class DB<T extends CommonTable> {
   // 当前数据库表名
   readonly _tableName: TableNames;
   // 数据库当前使用的表名
@@ -120,11 +121,16 @@ export class DB<T extends {}> {
   }
 
   // 数据字段处理
-  filterField(params: Partial<T>, isInsert: boolean) {
+  filterField(params: Partial<T>, isInsert: boolean, force: boolean) {
     // 过滤后的数据
     const temp: Partial<T> = {};
     // 需要进行中间表处理的数据及其配置
     const middleDatas: MiddleData[] = [];
+
+    if(!isInsert) {
+      // 更新修改时间
+      params.last_modified_time = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
+    }
 
     // 过滤数据库中存在的字段
     Object.entries(params).forEach(([k, v]) => {
@@ -133,8 +139,8 @@ export class DB<T extends {}> {
       if(
         col &&
         !col.primary_key &&
-        !col.forbid_write &&
-        (!col.write_only_insert || isInsert)
+        (force || (!col.forbid_write &&
+        (!col.write_only_insert || isInsert)))
       ) {
         temp[k] = this.transferFieldValue(col, v, k);
       }
@@ -148,6 +154,7 @@ export class DB<T extends {}> {
         });
       }
     });
+
     return { filteredData: temp, middleDatas };
   }
   // 值处理
@@ -187,7 +194,7 @@ export class DB<T extends {}> {
         data = tempData;
       }
 
-      const { filteredData, middleDatas } = this.filterField(data, true);
+      const { filteredData, middleDatas } = this.filterField(data, true, false);
       middleDatasList.push(middleDatas);
       // 设置默认值
       Object.entries(this.tableColumns).forEach(([k, v]) => {
@@ -224,16 +231,15 @@ export class DB<T extends {}> {
   }
 
   // 更新
-  async update(id: string | number, data: Partial<T>) {
-
-    const { filteredData, middleDatas } = this.filterField(data, false);
+  async update<R = Partial<T>>(id: string | number, data: R, force = false) {
+    const { filteredData, middleDatas } = this.filterField(data, false, force);
     const kvs: string[] = [];
+    // 更新修改时间
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
         kvs.push(`\`${k}\`=${v}`);
       }
     });
-
     const sql = `UPDATE \`${this.tableName}\` SET ${kvs.join(',')} WHERE \`${PRIMARY_FIELD}\`='${id}'`;
     const res = await this.runSql(sql);
     await this.updateMiddleTable(id, middleDatas, false);
@@ -343,7 +349,7 @@ export class DB<T extends {}> {
 
         const filter = valList.map(v => {
           // 格式化 key
-          key = `a.\`${key}\``;
+          const realKey = `a.\`${key}\``;
 
           // 范围类型
           if(isRange) {
@@ -354,18 +360,18 @@ export class DB<T extends {}> {
               v = `'${v}'`;
             }
 
-            if(isStart) return `${key}>=${v}`;
-            return `${key}<=${v}`;
+            if(isStart) return `${realKey}>=${v}`;
+            return `${realKey}<=${v}`;
           }
 
           if(REGS.number.test(col.type)) {
-            return `${key}='${v}'`;
+            return `${realKey}='${v}'`;
           } else {
             v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
             if(type === 'equal') {
-              return `${key}=BINARY '${v}'`;
+              return `${realKey}=BINARY '${v}'`;
             } else {
-              return `${key} LIKE '%${v}%'`;
+              return `${realKey} LIKE '%${v}%'`;
             }
           }
         }).join(' OR ');
@@ -491,7 +497,7 @@ export class DB<T extends {}> {
 
     return {
       list,
-      total: json[1][0].total,
+      total: json[1][0].total as number,
     };
   }
 

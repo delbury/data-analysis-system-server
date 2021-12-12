@@ -10,6 +10,7 @@ import camelcase from 'camelcase';
 
 import { numberReg, jsonReg } from './common';
 import { DBTable } from '../src/db/interface';
+import { getCommonTableColumns } from '../src/db/common';
 
 type Modules = { default: DBTable }
 
@@ -28,22 +29,33 @@ async function main() {
   // 每个表名
   const tableNames: string[] = [];
 
-  await Promise.all(files.map(file => {
-    const tablePath = path.resolve(tablesDirPath, `./${file}`);
-    return import(tablePath).then((modules: Modules) => {
-      const module = modules.default;
-      // 解析内容
-      const content = resolveTableModule(module);
-      // 生成文件
-      const tsFile = `./${camelcase(module.name, { pascalCase: true })}`;
-      saveAsFile(
-        path.resolve(outputDirPath, `${tsFile}.d.ts`),
-        content,
-      );
-      tableNames.push(module.name);
-      tsFiles.push(tsFile);
-    });
-  }));
+  await Promise.all(
+    files.map(file => {
+      const tablePath = path.resolve(tablesDirPath, `./${file}`);
+      return import(tablePath).then((modules: Modules) => {
+        const module = modules.default;
+        // 解析内容
+        const content = resolveTableModule(module);
+        // 生成文件
+        const tsFile = `./${camelcase(module.name, { pascalCase: true })}`;
+        saveAsFile(
+          path.resolve(outputDirPath, `${tsFile}.d.ts`),
+          content,
+        );
+        tableNames.push(module.name);
+        tsFiles.push(tsFile);
+      });
+    })
+  );
+
+  // 生成 common table
+  const commonTable: DBTable = { name: 'common', columns: getCommonTableColumns() };
+  const commonContent = resolveTableModule(commonTable, true);
+  const commonFile = `./${camelcase(commonTable.name, { pascalCase: true })}`;
+  saveAsFile(
+    path.resolve(outputDirPath, `${commonFile}.d.ts`),
+    commonContent,
+  );
 
   // 生成 index 文件
   const contents: string[] = [
@@ -56,9 +68,13 @@ async function main() {
 }
 
 // 处理导入的table模块
-function resolveTableModule(module: DBTable): string {
+function resolveTableModule(module: DBTable, isCommon = false): string {
   const typeName = `${camelcase(module.name, { pascalCase: true })}Table`;
-  const imports: string[] = [];
+  const imports: string[] = isCommon
+    ? [] :
+    [
+      'import { CommonTable } from \'./Common\';',
+    ];
   const contents: string[] = [];
   module.columns.forEach(item => {
     // 处理参数
@@ -109,8 +125,9 @@ function resolveTableModule(module: DBTable): string {
     });
   }
 
+  const ext = isCommon ? '' : 'extends CommonTable ';
   const result = (imports.length ? (imports.join('\n') + '\n\n') : '') +
-    `export interface ${typeName} {\n` + contents.join('\n') + '\n}\n';
+    `export interface ${typeName} ${ext}{\n` + contents.join('\n') + '\n}\n';
   return result;
 }
 

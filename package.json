@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@types/koa": "^2.13.4",
+    "@types/koa-redis": "^4.0.2",
     "@types/koa-router": "^7.4.4",
     "@types/koa-session": "^5.10.4",
     "@types/lodash": "^4.14.177",
@@ -30,10 +31,12 @@
     "camelcase": "^6.2.1",
     "koa": "^2.13.4",
     "koa-body": "^4.2.0",
+    "koa-redis": "^4.0.1",
     "koa-router": "^10.1.1",
     "koa-session": "^6.2.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "redis": "^4.0.0"
   }
 }

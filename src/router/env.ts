@@ -64,12 +64,12 @@ const accountInitData: Partial<AccountTable>[] = [
 ];
 
 
-router.get('/test', async (ctx) => {
+router.get('/test/', async (ctx) => {
   ctx.body = {
     msg: 'ok',
     // res,
   };
-}).get('/test/init', async (ctx) => {
+}).post('/init/', async (ctx) => {
   // 培训计划完成表
   await createTable(workbenchTableConfig);
   await dbWorkbench.insertTestData(20);
@@ -123,4 +123,7 @@ router.get('/test', async (ctx) => {
   };
 });
 
-export default router;
+export default {
+  router,
+  baseUrl: '/env',
+};

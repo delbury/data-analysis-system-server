@@ -29,14 +29,15 @@ router
       // 查询所有权限
       const roleIds = info.roles.map(it => `${it.id}`);
       const roles = await dbRole.search({ all: 1 }, dbRole.resolveFilters({ id: roleIds }));
-      const permissionsSet = new Set(roles.list.map(it => it.permissions).flat().map(it => it.tags).flat());
+      const permissions = roles.list.map(it => it.permissions).flat().map(it => it.tags).flat();
+      const permissionsList = permissions;
 
-      ctx.session.userInfo = info;
-      ctx.session.permissionsSet = permissionsSet;
+      ctx.session.userInfo = { ...info, roles: roles.list };
+      ctx.session.permissionsList = permissionsList;
 
       ctx.body = <Response>{
         code: 200,
-        data: info,
+        data: ctx.session.userInfo,
       };
     }
   })

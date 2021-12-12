@@ -1,8 +1,4 @@
-import { CommonTable } from './Common';
-
-export interface MiddleAccountRoleTable extends CommonTable {
-  account_id: number;
-  role_id: number;
+export interface CommonTable {
   // 主键
   id: number;
   // 是否已删除

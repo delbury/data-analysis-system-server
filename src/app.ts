@@ -1,26 +1,17 @@
 import Koa from 'koa';
 import koaBody from 'koa-body';
-import router, { AUTH_PATH_REG } from './router';
+import router from './router';
 import { Response } from './interface';
 import session from 'koa-session';
-import { sessionConfig } from './config';
+import { sessionConfig } from './configs/session';
+import { authControl } from './middlewares/auth-control';
 
 const app = new Koa();
 app.keys = ['wHlAEu0VOzHPRCcVj2TjPk1jWk9vOeVJ'];
 
 app
   .use(session(sessionConfig, app))
-  .use(async (ctx, next) => {
-    if(!AUTH_PATH_REG.test(ctx.path) && !ctx.session.userInfo) {
-      // 没有登录
-      ctx.status = 412;
-      ctx.body = {
-        code: 412,
-        msg: '请登录',
-      };
-    }
-    await next();
-  })
+  .use(authControl)
   // 错误捕获
   .use(async (ctx, next) => {
     try {
