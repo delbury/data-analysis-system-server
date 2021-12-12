@@ -52,15 +52,15 @@ const teamGroupInitData: Partial<TeamGroupTable>[] = [
   { name: '技术组', type: 2 },
 ];
 const roleInitData: Partial<RoleTable>[] = [
-  { name: '管理员' },
+  { name: '管理员', is_system: 1 },
 ];
 const permissionInitData: Partial<PermissionTable>[] = [
-  { name: '管理员权限', tags: ['all'], path: '/' },
+  { name: '管理员权限', tags: ['all'], path: '/', is_system: 1 },
   { name: '全局只读', tags: ['all.read'], path: '/' },
   { name: '培训计划完成表', tags: ['workbench'], path: '/workbench' },
 ];
 const accountInitData: Partial<AccountTable>[] = [
-  { name: '管理员', account: 'admin', password: '123456a' },
+  { name: '管理员', account: 'admin', password: '123456a', is_system: 1 },
 ];
 
 

@@ -55,10 +55,12 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
     })
     // 添加
     .post('/list/', async (ctx) => {
-      const res = await db.insert(ctx.request.body ?? {});
+      const res = await db.insert({
+        ...ctx.request.body ?? {},
+        // 设置创建者
+        creater_id: ctx.session.userInfo.id as number,
+      });
 
-      // 设置创建者
-      await db.update(res.insertId as string, { creater_id: ctx.session.userInfo.id as number }, true);
       // 添加成功后的回调
       if(handlers.afterInseart) {
         await handlers.afterInseart(ctx, res.insertId as string);
@@ -77,7 +79,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       const res = await db.update(id, ctx.request.body ?? {});
 
       // 修改更新者
-      await db.update(res.insertId as string, { last_modified_account_id: ctx.session.userInfo.id as number }, true);
+      await db.update(id, { last_modified_account_id: ctx.session.userInfo.id as number }, true);
       // 修改成功后的回调
       if(handlers.afterUpdate) {
         await handlers.afterUpdate(ctx, id);

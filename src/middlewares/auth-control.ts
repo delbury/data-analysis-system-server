@@ -8,7 +8,6 @@ import { AUTH_PATH_REG, ENV_PATH_REG } from '~/router';
 export const authControl: Koa.Middleware = async (ctx, next) => {
   // 排除 auth 相关接口
   if(AUTH_PATH_REG.test(ctx.path) || ENV_PATH_REG.test(ctx.path)) {
-    console.log(ctx.path);
     return await next();
   }
 

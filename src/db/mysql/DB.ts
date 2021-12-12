@@ -139,8 +139,10 @@ export class DB<T extends CommonTable> {
       if(
         col &&
         !col.primary_key &&
-        (force || (!col.forbid_write &&
-        (!col.write_only_insert || isInsert)))
+        (
+          force ||
+          (!col.forbid_write && (!col.write_only_insert || isInsert))
+        )
       ) {
         temp[k] = this.transferFieldValue(col, v, k);
       }
@@ -154,7 +156,6 @@ export class DB<T extends CommonTable> {
         });
       }
     });
-
     return { filteredData: temp, middleDatas };
   }
   // 值处理
@@ -230,11 +231,20 @@ export class DB<T extends CommonTable> {
     return res;
   }
 
+  // 写保护
+  async writeGuard(id: string) {
+    const res = await this.detail(id);
+    if(res.is_system) {
+      throw new Error('系统创建的数据不能修改或删除');
+    }
+  }
+
   // 更新
   async update<R = Partial<T>>(id: string | number, data: R, force = false) {
+    await this.writeGuard(id as string);
+
     const { filteredData, middleDatas } = this.filterField(data, false, force);
     const kvs: string[] = [];
-    // 更新修改时间
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
         kvs.push(`\`${k}\`=${v}`);
@@ -255,6 +265,8 @@ export class DB<T extends CommonTable> {
       fullDelete?: boolean; // 是否完全删除，包括关联的中间表
     }
   ) {
+    await this.writeGuard(id as string);
+
     const { idKey = PRIMARY_FIELD, fullDelete } = opts ?? {};
 
     // 过滤条件

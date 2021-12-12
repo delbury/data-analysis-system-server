@@ -41,10 +41,8 @@ export const getCommonTableColumns: (config?: Config) => DBTableCol[] = (config 
   {
     key: 'last_modified_time',
     type: 'DATETIME',
-    not_null: true,
     comment: '最后一次修改时间',
     forbid_write: true,
-    create_default: () => moment(new Date()).format('YYYY-MM-DD HH:mm:ss'),
   },
   {
     key: 'creater_id',
