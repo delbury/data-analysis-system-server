@@ -29,6 +29,7 @@ export const getCommonTableColumns: (config?: Config) => DBTableCol[] = (config 
     default: 0,
     comment: '是否是系统创建的数据',
     write_only_insert: true,
+    forbid_write: true,
   },
   {
     key: 'created_time',

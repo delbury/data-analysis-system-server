@@ -21,6 +21,7 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
   } else {
     const pset = new Set(ctx.session.permissionsList as string[]);
     const method = ctx.method.toUpperCase();
+
     // 全局权限控制
     if(
       pset.has('all') ||
@@ -29,10 +30,11 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
       return await next();
     }
     // 页面权限控制
+    // paths: [BASE_URL, table_name, 'list']
     const paths = ctx.path.split('/').filter(it => !!it);
     if(
-      pset.has(paths[0]) ||
-      (pset.has(`${paths[0]}.read`) && method === 'GET')
+      pset.has(paths[1]) ||
+      (pset.has(`${paths[1]}.read`) && method === 'GET')
     ) {
       return await next();
     }

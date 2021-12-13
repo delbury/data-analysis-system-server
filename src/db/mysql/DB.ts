@@ -183,7 +183,7 @@ export class DB<T extends CommonTable> {
   }
 
   // 插入
-  async insert(datas: Partial<T> | Partial<T>[]) {
+  async insert(datas: Partial<T> | Partial<T>[], force = false) {
     if(!Array.isArray(datas)) datas = [datas];
     // 关联关系数组
     const middleDatasList: MiddleData[][] = [];
@@ -195,7 +195,7 @@ export class DB<T extends CommonTable> {
         data = tempData;
       }
 
-      const { filteredData, middleDatas } = this.filterField(data, true, false);
+      const { filteredData, middleDatas } = this.filterField(data, true, force);
       middleDatasList.push(middleDatas);
       // 设置默认值
       Object.entries(this.tableColumns).forEach(([k, v]) => {
@@ -484,9 +484,9 @@ export class DB<T extends CommonTable> {
     }
     // 排序
     if(params.orderBy && params.order) {
-      sqls.push(`ORDER BY \`${params.orderBy}\` ${params.order}`);
+      sqls.push(`ORDER BY \`is_system\` desc, \`${params.orderBy}\` ${params.order}`);
     } else {
-      sqls.push('ORDER BY `created_time` desc');
+      sqls.push('ORDER BY `is_system` desc, `created_time` desc');
     }
     // 分页
     if(!params.all) {
