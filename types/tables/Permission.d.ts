@@ -4,8 +4,12 @@ export interface PermissionTable extends CommonTable {
   name: string;
   // 页面路径
   path: string;
-  // 权限列表
-  tags: string[];
+  // 接口权限列表
+  apis: string[];
+  // 数据权限列表
+  datas: string[];
+  // 页面元素权限列表
+  elms: string[];
   remark: string;
   // 主键
   id: number;

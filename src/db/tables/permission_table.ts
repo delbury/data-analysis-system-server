@@ -14,9 +14,21 @@ const table: DBTable = {
       comment: '页面路径',
     },
     {
-      key: 'tags',
+      key: 'apis',
       type: 'JSON',
-      comment: '权限列表',
+      comment: '接口权限列表',
+      json_type: 'string-array',
+    },
+    {
+      key: 'datas',
+      type: 'JSON',
+      comment: '数据权限列表',
+      json_type: 'string-array',
+    },
+    {
+      key: 'elms',
+      type: 'JSON',
+      comment: '页面元素权限列表',
       json_type: 'string-array',
     },
     {
