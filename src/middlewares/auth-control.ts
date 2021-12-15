@@ -19,13 +19,13 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
       msg: '请登录',
     };
   } else {
-    const pset = new Set(ctx.session.permissionsList as string[]);
+    const pmap = ctx.session.apisMap as Record<string, boolean>;
     const method = ctx.method.toUpperCase();
 
     // 全局权限控制
     if(
-      pset.has('all') ||
-      (pset.has('all.read') && method === 'GET')
+      pmap['all'] ||
+      (pmap['all.read'] && method === 'GET')
     ) {
       return await next();
     }
@@ -33,8 +33,8 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
     // paths: [BASE_URL, table_name, 'list']
     const paths = ctx.path.split('/').filter(it => !!it);
     if(
-      pset.has(paths[1]) ||
-      (pset.has(`${paths[1]}.read`) && method === 'GET')
+      pmap[paths[1]] ||
+      (pmap[`${paths[1]}.read`] && method === 'GET')
     ) {
       return await next();
     }

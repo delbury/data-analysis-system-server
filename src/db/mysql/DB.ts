@@ -250,6 +250,7 @@ export class DB<T extends CommonTable> {
         kvs.push(`\`${k}\`=${v}`);
       }
     });
+
     const sql = `UPDATE \`${this.tableName}\` SET ${kvs.join(',')} WHERE \`${PRIMARY_FIELD}\`='${id}'`;
     const res = await this.runSql(sql);
     await this.updateMiddleTable(id, middleDatas, false);
@@ -263,14 +264,15 @@ export class DB<T extends CommonTable> {
     opts?: {
       idKey?: string; // 要删除的 id 对应的字段
       fullDelete?: boolean; // 是否完全删除，包括关联的中间表
-    }
+    },
+    outFilters?: string[],
   ) {
     await this.writeGuard(id as string);
 
     const { idKey = PRIMARY_FIELD, fullDelete } = opts ?? {};
 
     // 过滤条件
-    const filters: string[] = [];
+    const filters: string[] = [...(outFilters ?? [])];
     if(Array.isArray(id)) {
       const ids = id.map(it => `'${it}'`).join(',');
       filters.push(`\`${idKey}\` IN (${ids})`);
@@ -343,7 +345,9 @@ export class DB<T extends CommonTable> {
   // 处理查询条件
   resolveFilters(
     filters: Record<string, string | string[]>,
-    type: 'auto' | 'equal' | 'like' = 'equal'
+    type: 'auto' | 'equal' | 'like' = 'equal',
+    // 是否需要 prefix 默认 "a."
+    hasPrefix = true,
   ) {
     const res: string[] = [];
     Object.entries(filters).forEach(([key, val]) => {
@@ -361,7 +365,7 @@ export class DB<T extends CommonTable> {
 
         const filter = valList.map(v => {
           // 格式化 key
-          const realKey = `a.\`${key}\``;
+          const realKey = `${hasPrefix ? 'a.' : ''}\`${key}\``;
 
           // 范围类型
           if(isRange) {
@@ -514,8 +518,14 @@ export class DB<T extends CommonTable> {
   }
 
   // 根据 id 查询
-  async detail(id: string) {
-    return (await this.search({ pageNumber: 1, pageSize: 1 }, [`a.\`${PRIMARY_FIELD}\`='${id}'`])).list?.[0];
+  async detail(id: string, filters?: string[]) {
+    return (await this.search(
+      { pageNumber: 1, pageSize: 1 },
+      [
+        `a.\`${PRIMARY_FIELD}\`='${id}'`,
+        ...(filters ?? []),
+      ]
+    )).list?.[0];
   }
 
   // 创建连接
@@ -553,21 +563,28 @@ export class DB<T extends CommonTable> {
 
   // 插入测试数据
   async insertTestData(n = 1) {
-    const data = {};
-    Object.entries(this.tableColumns).forEach(([k, v]) => {
-      if(REGS.datetime.test(v.type)) {
-        data[k] = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
-      } else if(REGS.time.test(v.type)) {
-        data[k] = moment(new Date()).format('HH:mm:ss');
-      } else if(REGS.date.test(v.type)) {
-        data[k] = moment(new Date()).format('YYYY-MM-DD');
-      } else if(REGS.number.test(v.type)) {
-        data[k] = 1;
-      } else {
-        data[k] = 'test';
-      }
-    });
-    return await this.insert(Array(n).fill(data));
+    n = Math.max(Math.floor(n), 1);
+    const dataList: {}[] = [];
+    for(let i = 0; i < n; i++) {
+      const data = {};
+      Object.entries(this.tableColumns).forEach(([k, v]) => {
+        if(REGS.datetime.test(v.type)) {
+          data[k] = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
+        } else if(REGS.time.test(v.type)) {
+          data[k] = moment(new Date()).format('HH:mm:ss');
+        } else if(REGS.date.test(v.type)) {
+          data[k] = moment(new Date()).format('YYYY-MM-DD');
+        } else if(REGS.boolNumber.test(v.type)) {
+          data[k] = Math.random() > 0.5 ? 1 : 0;
+        } else if(REGS.number.test(v.type)) {
+          data[k] = Math.floor(Math.random() * 10 + 1);
+        } else {
+          data[k] = 'test';
+        }
+      });
+      dataList.push(data);
+    }
+    return await this.insert(dataList);
   }
 
   async runSql(sql: string) {

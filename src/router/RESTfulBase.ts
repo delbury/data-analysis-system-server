@@ -10,6 +10,30 @@ interface Hanlders {
   afterDelete?: (ctx: Koa.ParameterizedContext, id: string) => void;
 }
 
+const NODATA_OR_NOAUTH_MSG = '没有该数据或无权限';
+const NOAUTH_MSG = '没有操作该数据权限';
+
+// 新建或修改时，判断传入的值是否符合表的数据权限规则
+const isFieldValueValid = (data: Record<string, string | string[]>, fieldsMap?: Record<string, string[]>): boolean => {
+  if(!fieldsMap) return true;
+  for(const field in fieldsMap) {
+    if(field in data) {
+      // 当前传入的值
+      const dataVal = data[field];
+      if(dataVal == void 0 || dataVal == '') continue;
+
+      // 权限的值集合
+      const pset = new Set(fieldsMap[field]);
+      if(Array.isArray(dataVal)) {
+        if(dataVal.some(it => !pset.has(`${it}`))) return false;
+      } else {
+        return pset.has(`${dataVal}`);
+      }
+    }
+  }
+  return true;
+};
+
 export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlders = {}) => {
   const router = new Router();
 
@@ -32,7 +56,11 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
 
       const res = await db.search(
         { pageSize, pageNumber, all, orderBy, order },
-        db.resolveFilters(filters, 'auto'),
+        db.resolveFilters({
+          ...filters,
+          // 数据权限
+          ...(ctx.session.datasMap[db.tableName] ?? {}),
+        }, 'auto'),
       );
       ctx.body = <Response>{
         code: 200,
@@ -47,66 +75,114 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
-      const res = await db.detail(id);
-      ctx.body = <Response>{
-        code: 200,
-        data: res,
-      };
+      const res = await db.detail(id, db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}));
+      if(res) {
+        ctx.body = <Response>{
+          code: 200,
+          data: res,
+        };
+      } else {
+        ctx.status = 400;
+        ctx.body = <Response>{
+          code: 400,
+          data: null,
+          msg: NODATA_OR_NOAUTH_MSG,
+        };
+      }
     })
     // 添加
     .post('/list/', async (ctx) => {
-      const res = await db.insert({
-        ...ctx.request.body ?? {},
-        // 设置创建者
-        creater_id: ctx.session.userInfo.id as number,
-      });
+      const fieldsMap = ctx.session.datasMap[db.tableName];
+      const data = ctx.request.body ?? {};
+      if(isFieldValueValid(data, fieldsMap)) {
+        const res = await db.insert({
+          ...data,
+          // 设置创建者
+          creater_id: ctx.session.userInfo.id as number,
+        });
 
-      // 添加成功后的回调
-      if(handlers.afterInseart) {
-        await handlers.afterInseart(ctx, res.insertId as string);
+        // 添加成功后的回调
+        if(handlers.afterInseart) {
+          await handlers.afterInseart(ctx, res.insertId as string);
+        }
+
+        ctx.body = <Response>{
+          code: 200,
+          data: null,
+        };
+      } else {
+        ctx.status = 400;
+        ctx.body = <Response>{
+          code: 400,
+          data: null,
+          msg: NOAUTH_MSG,
+        };
       }
 
-      ctx.body = <Response>{
-        code: 200,
-        data: null,
-      };
     })
     // 修改
     .put('/list/:id/', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
-      const res = await db.update(id, ctx.request.body ?? {});
+      const fieldsMap = ctx.session.datasMap[db.tableName];
+      const data = ctx.request.body ?? {};
+      if(isFieldValueValid(data, fieldsMap)) {
+        const res = await db.update(
+          id,
+          ctx.request.body ?? {},
+          false,
+        );
 
-      // 修改更新者
-      await db.update(id, { last_modified_account_id: ctx.session.userInfo.id as number }, true);
-      // 修改成功后的回调
-      if(handlers.afterUpdate) {
-        await handlers.afterUpdate(ctx, id);
+        // 修改更新者
+        await db.update(id, { last_modified_account_id: ctx.session.userInfo.id as number }, true);
+
+        // 修改成功后的回调
+        if(handlers.afterUpdate) {
+          await handlers.afterUpdate(ctx, id);
+        }
+        ctx.body = <Response>{
+          code: 200,
+          data: null,
+        };
+      } else {
+        ctx.status = 400;
+        ctx.body = <Response>{
+          code: 400,
+          data: null,
+          msg: NOAUTH_MSG,
+        };
       }
-
-      ctx.body = <Response>{
-        code: 200,
-        data: null,
-      };
     })
     // 删除
     .delete('/list/:id/', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
-      const res = await db.delete(id, { fullDelete: true });
-      if(!res.affectedRows) throw Error('no such id');
+      const res = await db.delete(
+        id,
+        { fullDelete: true },
+        db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, void 0, false)
+      );
 
-      // 删除成功后的回调
-      if(handlers.afterDelete) {
-        await handlers.afterDelete(ctx, id);
+      if(!res.affectedRows) {
+        ctx.status = 400;
+        ctx.body = <Response>{
+          code: 400,
+          data: null,
+          msg: NODATA_OR_NOAUTH_MSG,
+        };
+      } else {
+        // 删除成功后的回调
+        if(handlers.afterDelete) {
+          await handlers.afterDelete(ctx, id);
+        }
+
+        ctx.body = <Response>{
+          code: 200,
+          data: null,
+        };
       }
-
-      ctx.body = <Response>{
-        code: 200,
-        data: null,
-      };
     });
 
   return { router, baseUrl: `/${db.tableName}` };

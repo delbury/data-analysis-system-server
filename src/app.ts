@@ -10,8 +10,6 @@ const app = new Koa();
 app.keys = ['wHlAEu0VOzHPRCcVj2TjPk1jWk9vOeVJ'];
 
 app
-  .use(session(sessionConfig, app))
-  .use(authControl)
   // 错误捕获
   .use(async (ctx, next) => {
     try {
@@ -25,6 +23,8 @@ app
       };
     }
   })
+  .use(session(sessionConfig, app))
+  .use(authControl)
   .use(koaBody())
   .use(router.routes())
   .use(router.allowedMethods());

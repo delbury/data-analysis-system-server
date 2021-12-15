@@ -60,7 +60,7 @@ const middleRolePermission = [
 ];
 const permissionInitData: Partial<PermissionTable>[] = [
   { name: '管理员权限', apis: ['all'], path: '/', is_system: 1 },
-  { name: '培训计划完成表', apis: ['workbench'], path: '/workbench' },
+  { name: '培训计划完成表', apis: ['workbench'], datas: ['workbench.group_id.1'], path: '/workbench' },
 ];
 const middleAccountRole = [
   [0, 0], [1, 1],

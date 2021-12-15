@@ -23,6 +23,7 @@ export const REGS = {
   time: /^TIME/i,
   number: /^(DECIMAL|INT|TINYINT)/i,
   json: /^JSON/i,
+  boolNumber: /^TINYINT/i,
 };
 
 // 数据库 table 列参数 map

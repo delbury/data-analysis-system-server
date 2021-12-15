@@ -2,7 +2,7 @@
 import Router from 'koa-router';
 import { Response } from '~/interface';
 import { db as dbAccount } from '../account';
-import { db as dbRole } from '../role';
+import { updateSession } from './tools';
 
 const router = new Router();
 
@@ -23,17 +23,8 @@ router
         msg: '账号或密码错误',
       };
     } else {
-      const info = res.list[0];
-      delete info.password;
-
-      // 查询所有权限
-      const roleIds = info.roles.map(it => `${it.id}`);
-      const roles = await dbRole.search({ all: 1 }, dbRole.resolveFilters({ id: roleIds }));
-      const permissions = roles.list.map(it => it.permissions).flat().map(it => it.apis).flat();
-      const permissionsList = permissions;
-
-      ctx.session.userInfo = { ...info, roles: roles.list };
-      ctx.session.permissionsList = permissionsList;
+      // 查询并设置 session
+      await updateSession(ctx, res.list[0]);
 
       ctx.body = <Response>{
         code: 200,
