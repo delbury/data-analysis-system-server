@@ -40,11 +40,11 @@ export const DB_TABLE_MAP: { [key in TableNames]: { config: DBTable, map: Record
 };
 
 export const mysqlConfig: ConnectionConfig = {
-  host: 'localhost',
-  user: 'user',
-  password: '123456a',
-  // port: 3306,
-  database: 'data_analysis_system',
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  port: Number(process.env.MYSQL_PORT),
+  database: process.env.MYSQL_DATABASE,
 };
 
 // 创建数据库

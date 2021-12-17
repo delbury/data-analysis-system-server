@@ -1,3 +1,4 @@
+import './pre';
 import Koa from 'koa';
 import koaBody from 'koa-body';
 import router from './router';
@@ -5,6 +6,7 @@ import { Response } from './interface';
 import session from 'koa-session';
 import { sessionConfig } from './configs/session';
 import { authControl } from './middlewares/auth-control';
+
 
 const app = new Koa();
 app.keys = ['wHlAEu0VOzHPRCcVj2TjPk1jWk9vOeVJ'];
