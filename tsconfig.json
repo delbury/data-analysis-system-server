@@ -19,6 +19,6 @@
       "~libs/*": ["libs/*"],
     },
   },
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "output"],
   "include": ["src", "libs"]
 }
