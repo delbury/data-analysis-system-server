@@ -71,12 +71,12 @@ const accountInitData: Partial<AccountTable>[] = [
 ];
 
 
-router.get('/test/', async (ctx) => {
+router.get('/test', async (ctx) => {
   ctx.body = {
     msg: 'ok',
     // res,
   };
-}).post('/init/', async (ctx) => {
+}).post('/init', async (ctx) => {
   // 培训计划完成表
   await createTable(workbenchTableConfig);
   await dbWorkbench.insertTestData(20);

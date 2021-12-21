@@ -39,7 +39,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
 
   router
     // 查询
-    .get('/list/', async (ctx) => {
+    .get('/list', async (ctx) => {
       const pageSize = Number(ctx.query.pageSize) || 20;
       const pageNumber = Number(ctx.query.pageNumber) || 1;
       const all = Number(ctx.query.all) || 0;
@@ -71,7 +71,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       };
     })
     // 详情
-    .get('/list/:id/', async (ctx) => {
+    .get('/list/:id', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
@@ -91,7 +91,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       }
     })
     // 添加
-    .post('/list/', async (ctx) => {
+    .post('/list', async (ctx) => {
       const fieldsMap = ctx.session.datasMap[db.tableName];
       const data = ctx.request.body ?? {};
       if(isFieldValueValid(data, fieldsMap)) {
@@ -121,7 +121,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
 
     })
     // 修改
-    .put('/list/:id/', async (ctx) => {
+    .put('/list/:id', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
@@ -155,7 +155,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       }
     })
     // 删除
-    .delete('/list/:id/', async (ctx) => {
+    .delete('/list/:id', async (ctx) => {
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
