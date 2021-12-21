@@ -25,6 +25,7 @@ const config: Configuration = {
     },
     extensions: ['.ts', '.js', '.json'],
   },
+  devtool: 'source-map',
   optimization: {
     minimizer: [
       new TerserPlugin({
