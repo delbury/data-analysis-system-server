@@ -133,7 +133,7 @@ router
 
 
     ctx.body = {
-      msg: 'ok',
+      msg: 'INIT OK',
       // res,
     };
   });
