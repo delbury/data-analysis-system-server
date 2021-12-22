@@ -27,6 +27,7 @@ const config: Configuration = {
   },
   devtool: 'source-map',
   optimization: {
+    minimize: true,
     minimizer: [
       new TerserPlugin({
         extractComments: false,
@@ -34,6 +35,7 @@ const config: Configuration = {
           format: {
             comments: false,
           },
+          mangle: false,
         },
       }),
     ],

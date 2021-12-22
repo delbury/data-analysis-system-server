@@ -113,6 +113,7 @@ module.exports = {
     '@typescript-eslint/no-empty-interface': 'off',
     '@typescript-eslint/no-var-requires': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
+    'no-async-promise-executor': 'off',
     // 'vue/max-attributes-per-line': ['warn', {
     //   singleline: {
     //     max: 4,

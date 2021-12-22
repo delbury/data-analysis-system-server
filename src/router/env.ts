@@ -70,6 +70,55 @@ const accountInitData: Partial<AccountTable>[] = [
   { name: '用户账号', account: 'test', password: '123456a' },
 ];
 
+export const initDbTables = async (globalForce = false) => {
+  // 培训计划完成表
+  const resWorkbenchCreate = await createTable(workbenchTableConfig, globalForce);
+
+  // 班组表
+  const resTeamGroupCreate = await createTable(teamGroupTableConfig, globalForce);
+  if(resTeamGroupCreate) await dbTeamGroup.insert(teamGroupInitData, true);
+
+  // 人员表
+  const resStaffCreate = await createTable(staffTableConfig, globalForce);
+
+  // 角色表
+  const resRoleCreate = await createTable(roleTableConfig, globalForce);
+  const resRole = resRoleCreate ? await dbRole.insert(roleInitData, true) : null;
+
+  // 权限表
+  const resPermissionCreate = await createTable(permissionConfig, globalForce);
+  const resPermission = resPermissionCreate ? await dbPermission.insert(permissionInitData, true) : null;
+
+  // 账号表
+  const resAccountCreate = await createTable(accountConfig, globalForce);
+  const resAccount = resAccountCreate ? await dbAccount.insert(accountInitData, true) : null;
+
+  // 角色、权限关系中间表
+  if(resRole && resPermission) {
+    const middleRolePermissionInitData: Partial<MiddleRolePermissionTable>[] = [];
+    middleRolePermission.forEach(([role, perm]) => {
+      middleRolePermissionInitData.push({
+        role_id: resRole.length ? resRole[role].insertId : resRole.insertId,
+        permission_id: resPermission.length ? resPermission[perm].insertId : resPermission.insertId,
+      });
+    });
+    await createTable(middleRolePermissionConfig, globalForce);
+    await dbMiddleRolePermission.insert(middleRolePermissionInitData, true);
+  }
+
+  // 账号、角色关系中间表
+  if(resRole && resAccount) {
+    const middleAccountRoleInitData: Partial<MiddleAccountRoleTable>[] = [];
+    middleAccountRole.forEach(([role, perm]) => {
+      middleAccountRoleInitData.push({
+        role_id: resRole.length ? resRole[role].insertId : resRole.insertId,
+        account_id: resAccount.length ? resAccount[perm].insertId : resAccount.insertId,
+      });
+    });
+    await createTable(middleAccountRoleConfig, globalForce);
+    await dbMiddleAccountRole.insert(middleAccountRoleInitData, true);
+  }
+};
 
 router
   .get('/test', async (ctx) => {
@@ -85,52 +134,7 @@ router
     };
   })
   .post('/init', async (ctx) => {
-    // 培训计划完成表
-    await createTable(workbenchTableConfig);
-    await dbWorkbench.insertTestData(20);
-
-    // 班组表
-    await createTable(teamGroupTableConfig);
-    await dbTeamGroup.insert(teamGroupInitData, true);
-
-    // 人员表
-    await createTable(staffTableConfig);
-    await dbStaff.insertTestData(4);
-
-    // 角色表
-    await createTable(roleTableConfig);
-    const resRole = await dbRole.insert(roleInitData, true);
-
-    // 权限表
-    await createTable(permissionConfig);
-    const resPermission = await dbPermission.insert(permissionInitData, true);
-
-    // 账号表
-    await createTable(accountConfig);
-    const resAccount = await dbAccount.insert(accountInitData, true);
-
-    // 角色、权限关系中间表
-    const middleRolePermissionInitData: Partial<MiddleRolePermissionTable>[] = [];
-    middleRolePermission.forEach(([role, perm]) => {
-      middleRolePermissionInitData.push({
-        role_id: resRole.length ? resRole[role].insertId : resRole.insertId,
-        permission_id: resPermission.length ? resPermission[perm].insertId : resPermission.insertId,
-      });
-    });
-    await createTable(middleRolePermissionConfig);
-    await dbMiddleRolePermission.insert(middleRolePermissionInitData, true);
-
-    // 账号、角色关系中间表
-    const middleAccountRoleInitData: Partial<MiddleAccountRoleTable>[] = [];
-    middleAccountRole.forEach(([role, perm]) => {
-      middleAccountRoleInitData.push({
-        role_id: resRole.length ? resRole[role].insertId : resRole.insertId,
-        account_id: resAccount.length ? resAccount[perm].insertId : resAccount.insertId,
-      });
-    });
-    await createTable(middleAccountRoleConfig);
-    await dbMiddleAccountRole.insert(middleAccountRoleInitData, true);
-
+    await initDbTables();
 
     ctx.body = {
       msg: 'INIT OK',

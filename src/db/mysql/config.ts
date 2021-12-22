@@ -70,8 +70,24 @@ export const createConnection = (cb?: (cnt: mysql.Connection) => void) => {
 };
 
 // 创建表
-export const createTable = (tableConfig: DBTable) => {
-  return new Promise((resolve, reject) => {
+export const createTable = (tableConfig: DBTable, force = false): Promise<false | any[]> => {
+  return new Promise(async (resolve, reject) => {
+    // 非强制则先检查 table 是否存在
+    if(!force) {
+      const checkRes = await new Promise((resolve) => {
+        createConnection(async (cnt) => {
+          const sql = 'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES ' +
+            `WHERE \`TABLE_SCHEMA\`='${mysqlConfig.database}' AND \`TABLE_NAME\`='${tableConfig.name}'`;
+          const result = await runSql(cnt, sql);
+          resolve(result);
+        });
+      });
+      // 存在则跳过创建
+      if(checkRes[0]?.TABLE_NAME) {
+        console.log(`database table: ${tableConfig.name} already exists !`);
+        return resolve(false);
+      }
+    }
     createConnection(async (cnt) => {
       // 生成字段配置
       const cols = tableConfig.columns.map(it => {
