@@ -17,6 +17,8 @@ export interface DBTableCol {
   not_null?: boolean;
   // 是否是主键
   primary_key?: boolean;
+  // 区分大小写
+  binary?: boolean;
 
   // 字段属性
   // 创建后不允许直接修改

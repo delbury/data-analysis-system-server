@@ -86,7 +86,7 @@ export class DB<T extends CommonTable> {
     this.tableExcludeFields = fields ? new Set(fields) : null;
   }
 
-  // 更新关联关系表
+  /* start 更新关联关系表 */
   async updateMiddleTable(id: number | string, mds: MiddleData[], isInsert: boolean) {
     // 插入时切无关联关系，则不需要处理
     if(isInsert && !mds.length) return;
@@ -119,6 +119,7 @@ export class DB<T extends CommonTable> {
       this.clearCurrentTable();
     }
   }
+  /* end 更新关联关系表 */
 
   // 数据字段处理
   filterField(params: Partial<T>, isInsert: boolean, force: boolean) {
@@ -262,7 +263,7 @@ export class DB<T extends CommonTable> {
     // 要删除的 id
     id: string | number | (string | number)[],
     opts?: {
-      idKey?: string; // 要删除的 id 对应的字段
+      idKey?: string; // 要删除的 id 对应的字段，默认为 "id"
       fullDelete?: boolean; // 是否完全删除，包括关联的中间表
     },
     outFilters?: string[],
@@ -298,8 +299,11 @@ export class DB<T extends CommonTable> {
   }
 
   // 软删除
-  async softDelete(id: string) {
-    const sql = `UPDATE \`${this.tableName}\` SET \`is_delete\`='1' WHERE \`${PRIMARY_FIELD}\`='${id}'`;
+  async softDelete(id: string, filters?: string[]) {
+    // 过滤条件
+    const filterString: string = filters?.length ? ` ${filters.join(' AND ')}` : '';
+
+    const sql = `UPDATE \`${this.tableName}\` SET \`is_delete\`='1' WHERE \`${PRIMARY_FIELD}\`='${id}'${filterString}`;
     const res = await this.runSql(sql);
     return res;
   }
@@ -475,9 +479,9 @@ export class DB<T extends CommonTable> {
     if(other?.filterDeleted) {
       // 过滤软删除的数据
       if(filter) {
-        filter.push('`is_delete`=\'1\'');
+        filter.push('a.`is_delete`=\'0\'');
       } else {
-        filter = ['`is_delete`=\'1\''];
+        filter = ['a.`is_delete`=\'0\''];
       }
     }
     if(filter?.length) {

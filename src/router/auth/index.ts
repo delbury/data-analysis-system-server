@@ -12,7 +12,8 @@ router
     const { account, password } = ctx.request.body;
     const res = await dbAccount.search(
       { pageNumber: 1, pageSize: 1 },
-      dbAccount.resolveFilters({ account, password })
+      dbAccount.resolveFilters({ account, password }),
+      { filterDeleted: true },
     );
 
     if(!res.total) {

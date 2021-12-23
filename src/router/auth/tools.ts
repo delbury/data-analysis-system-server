@@ -16,7 +16,7 @@ export const updateSession = async (ctx: Koa.ParameterizedContext, idOrInfo?: st
     info = await dbAccount.detail(ctx.session.userInfo.id);
   } else if(typeof idOrInfo === 'string') {
     // 当传入的值为 id
-    info = await dbAccount.detail(idOrInfo);
+    info = await dbAccount.detail(idOrInfo, dbAccount.resolveFilters({ is_delete: '0' }),);
   } else {
     // 当传入的值为 user info
     info = idOrInfo;

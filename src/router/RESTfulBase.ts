@@ -5,6 +5,7 @@ import Koa from 'koa';
 import { CommonTable } from '~types/tables/Common';
 
 interface Hanlders {
+  beforeInsert?: (ctx: Koa.ParameterizedContext, data: Record<string, any>) => Promise<string | void>;
   afterInseart?: (ctx: Koa.ParameterizedContext, id: string) => void;
   afterUpdate?: (ctx: Koa.ParameterizedContext, id: string) => void;
   afterDelete?: (ctx: Koa.ParameterizedContext, id: string) => void;
@@ -61,6 +62,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
           // 数据权限
           ...(ctx.session.datasMap[db.tableName] ?? {}),
         }, 'auto'),
+        { filterDeleted: true }
       );
       ctx.body = <Response>{
         code: 200,
@@ -95,6 +97,18 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       const fieldsMap = ctx.session.datasMap[db.tableName];
       const data = ctx.request.body ?? {};
       if(isFieldValueValid(data, fieldsMap)) {
+        if(handlers.beforeInsert) {
+          const checkRes = await handlers.beforeInsert(ctx, data);
+          if(checkRes) {
+            ctx.status = 400;
+            ctx.body = <Response>{
+              code: 400,
+              msg: checkRes,
+            };
+            return;
+          }
+        }
+
         const res = await db.insert({
           ...data,
           // 设置创建者
@@ -159,9 +173,15 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
-      const res = await db.delete(
+      // 物理删除
+      // const res = await db.delete(
+      //   id,
+      //   { fullDelete: true },
+      //   db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, void 0, false)
+      // );
+      // 逻辑删除
+      const res = await db.softDelete(
         id,
-        { fullDelete: true },
         db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, void 0, false)
       );
 

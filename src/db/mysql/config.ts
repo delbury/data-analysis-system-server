@@ -97,6 +97,7 @@ export const createTable = (tableConfig: DBTable, force = false): Promise<false 
         if(it.auto_increment) opts.push('AUTO_INCREMENT');
         if(it.primary_key) opts.push('PRIMARY KEY');
         if(it.default !== void 0) opts.push('DEFAULT ' + it.default);
+        if(it.binary) opts.push('BINARY');
         return opts.join(' ');
       }).join(',');
 
