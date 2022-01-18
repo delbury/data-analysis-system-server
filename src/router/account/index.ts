@@ -8,8 +8,12 @@ export const db = new DB<AccountTable>('account', {});
 export default createRouter(db, {
   // 更新 session
   afterUpdate: async (ctx, id) => {
-    // 修改了当前账号后，更新 session
-    await updateSession(ctx, id);
+    // 修改了当前账号后，更新当前账号的 session
+    if(`${ctx.session.userInfo.id}` === `${id}`) {
+      await updateSession(ctx, id);
+    }
+
+    // TODO 更新对应已登录 id 的账号 session
   },
   afterDelete: (ctx, id) => {
     // 删除了当前账号后，session 失效

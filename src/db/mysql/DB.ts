@@ -87,6 +87,7 @@ export class DB<T extends CommonTable> {
   }
 
   /* start 更新关联关系表 */
+  // id: 当前表的 id
   async updateMiddleTable(id: number | string, mds: MiddleData[], isInsert: boolean) {
     // 插入时切无关联关系，则不需要处理
     if(isInsert && !mds.length) return;
@@ -115,7 +116,9 @@ export class DB<T extends CommonTable> {
   async deleteMiddleTable(id: number | string, mds: MiddleData[]) {
     for(const md of mds) {
       this.setCurrentTable(md.config.middleTableName);
-      await this.delete(id, { idKey: md.config.middleMainField });
+      await this.deleteBy(this.resolveFilters({
+        [md.config.middleMainField]: `${id}`,
+      }, 'equal', false));
       this.clearCurrentTable();
     }
   }
@@ -235,7 +238,9 @@ export class DB<T extends CommonTable> {
   // 写保护
   async writeGuard(id: string) {
     const res = await this.detail(id);
-    if(res.is_system) {
+    if(!res) {
+      throw new Error('数据不存在');
+    } else if(res.is_system) {
       throw new Error('系统创建的数据不能修改或删除');
     }
   }
@@ -295,6 +300,14 @@ export class DB<T extends CommonTable> {
       }
     }
 
+    return res;
+  }
+
+  // 条件删除
+  async deleteBy(outFilters: string[]) {
+    const filters: string[] = [...(outFilters ?? [])];
+    const sql = `DELETE FROM \`${this.tableName}\` WHERE ${filters.join(' AND ')}`;
+    const res = await this.runSql(sql);
     return res;
   }
 
@@ -502,7 +515,8 @@ export class DB<T extends CommonTable> {
       sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
     }
 
-    const res = await this.runSql(sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;');
+    const fullsql = sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;';
+    const res = await this.runSql(fullsql);
     const json = JSON.parse(JSON.stringify(res));
     const list = json[0] as T[];
 
@@ -510,7 +524,9 @@ export class DB<T extends CommonTable> {
     if(this.jsonColumnsSet.size) {
       list.forEach(li => {
         Array.from(this.jsonColumnsSet.keys()).forEach((key) => {
-          li[key] = JSON.parse(li[key]);
+          if(li[key]) {
+            li[key] = JSON.parse(li[key]);
+          }
         });
       });
     }
@@ -523,13 +539,14 @@ export class DB<T extends CommonTable> {
 
   // 根据 id 查询
   async detail(id: string, filters?: string[]) {
-    return (await this.search(
+    const res = (await this.search(
       { pageNumber: 1, pageSize: 1 },
       [
         `a.\`${PRIMARY_FIELD}\`='${id}'`,
         ...(filters ?? []),
       ]
-    )).list?.[0];
+    ));
+    return res.list?.[0];
   }
 
   // 创建连接

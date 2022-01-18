@@ -21,7 +21,6 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
   } else {
     const pmap = ctx.session.apisMap as Record<string, boolean>;
     const method = ctx.method.toUpperCase();
-
     // 全局权限控制
     if(
       pmap['all'] ||
