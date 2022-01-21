@@ -236,20 +236,22 @@ export class DB<T extends CommonTable> {
   }
 
   // 写保护
-  async writeGuard(id: string) {
+  async writeGuard(id: string, force: boolean) {
     const res = await this.detail(id);
     if(!res) {
       throw new Error('数据不存在');
-    } else if(res.is_system) {
+    } else if(res.is_system && !force) {
       throw new Error('系统创建的数据不能修改或删除');
     }
   }
 
   // 更新
-  async update<R = Partial<T>>(id: string | number, data: R, force = false) {
-    await this.writeGuard(id as string);
+  async update<R = Partial<T>>(id: string | number, data: R, opts?: {
+    force?: boolean;
+  }) {
+    await this.writeGuard(id as string, opts.force);
 
-    const { filteredData, middleDatas } = this.filterField(data, false, force);
+    const { filteredData, middleDatas } = this.filterField(data, false, opts.force);
     const kvs: string[] = [];
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
@@ -273,7 +275,7 @@ export class DB<T extends CommonTable> {
     },
     outFilters?: string[],
   ) {
-    await this.writeGuard(id as string);
+    await this.writeGuard(id as string, false);
 
     const { idKey = PRIMARY_FIELD, fullDelete } = opts ?? {};
 

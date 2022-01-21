@@ -145,11 +145,11 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
         const res = await db.update(
           id,
           ctx.request.body ?? {},
-          false,
+          { force: false },
         );
 
         // 修改更新者
-        await db.update(id, { last_modified_account_id: ctx.session.userInfo.id as number }, true);
+        await db.update(id, { last_modified_account_id: ctx.session.userInfo.id as number }, { force: true });
 
         // 修改成功后的回调
         if(handlers.afterUpdate) {

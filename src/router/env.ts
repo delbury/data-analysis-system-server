@@ -46,8 +46,9 @@ const teamGroupInitData: Partial<TeamGroupTable>[] = [
   { name: '奥的斯机电', type: 2 },
   { name: '三菱', type: 2 },
   { name: '迅达', type: 2 },
-  { name: '今创', type: 2 },
-  { name: '惠民登辉', type: 2 },
+  // { name: '今创', type: 2 },
+  // { name: '惠民登辉', type: 2 },
+  { name: '方大', type: 2 },
   { name: '维创', type: 2 },
   { name: '技术组', type: 2 },
 ];

@@ -72,7 +72,7 @@ router
         msg = '旧密码错误';
       } else {
         const id = res.list[0].id;
-        await dbAccount.update(id, { password: newPassword });
+        await dbAccount.update(id, { password: newPassword }, { force: true });
       }
     }
 
