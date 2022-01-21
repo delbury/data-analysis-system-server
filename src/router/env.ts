@@ -34,7 +34,7 @@ const dbMiddleAccountRole = new DB<PermissionTable>('middle_account_role');
 // 初始化数据
 const teamGroupInitData: Partial<TeamGroupTable>[] = [
   { name: '5号线AFC商贸城工班', type: 1 },
-  { name: '5号线AFC塞云台工班', type: 1 },
+  { name: '5号线AFC赛云台工班', type: 1 },
   { name: '5号线AFC九兴工班', type: 1 },
   { name: '5号线AFC大源工班', type: 1 },
   { name: '5号线风水电工班', type: 1 },
