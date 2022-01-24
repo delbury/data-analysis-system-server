@@ -9,7 +9,12 @@ const db = new DB<WorkbenchTable>('workbench', {
   },
 });
 
-const router = createRouter(db);
+const router = createRouter(db, {
+  // 编辑一次后，变更为完成
+  additionalUpdate: (ctx, data) => ({
+    status: 2,
+  }),
+});
 
 router.router.get('/projectcode', async (ctx) => {
   const project = ctx.query.project;

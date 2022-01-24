@@ -7,6 +7,7 @@
   - 添加lint-staged
   ### Bubfix
   - 修复修改有中间表的数据时的bug
+  - 修复编辑保存后workbench状态问题
 
 - ## 1.0.0
   ### Improve

@@ -4,11 +4,12 @@ import Koa from 'koa';
 import { CommonTable } from '~types/tables/Common';
 import { setError, setResult } from '~/util';
 
-interface Hanlders {
-  beforeInsert?: (ctx: Koa.ParameterizedContext, data: Record<string, any>) => Promise<string | void>;
+interface Hanlders<T = any> {
+  beforeInsert?: (ctx: Koa.ParameterizedContext, data: T) => Promise<string | void>;
   afterInseart?: (ctx: Koa.ParameterizedContext, id: string) => void;
   afterUpdate?: (ctx: Koa.ParameterizedContext, id: string) => void;
   afterDelete?: (ctx: Koa.ParameterizedContext, id: string) => void;
+  additionalUpdate?: (ctx: Koa.ParameterizedContext, data: T) => Partial<T>;
 }
 
 const NODATA_OR_NOAUTH_MSG = '没有该数据或无权限';
@@ -35,7 +36,7 @@ const isFieldValueValid = (data: Record<string, string | string[]>, fieldsMap?: 
   return true;
 };
 
-export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlders = {}) => {
+export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlders<T> = {}) => {
   const router = new Router();
 
   router
@@ -126,7 +127,14 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
         );
 
         // 修改更新者
-        await db.update(id, { last_modified_account_id: ctx.session.userInfo.id as number }, { force: true });
+        await db.update(
+          id,
+          {
+            last_modified_account_id: ctx.session.userInfo.id as number,
+            ...(handlers.additionalUpdate ? handlers.additionalUpdate(ctx, data) : {}),
+          },
+          { force: true },
+        );
 
         // 修改成功后的回调
         if(handlers.afterUpdate) {
