@@ -3,6 +3,8 @@
   ### Feature
   - 管理员账号密码可修改
   - workbench生成项目编号api
+  ### Chore
+  - 添加lint-staged
   ### Bubfix
   - 修复修改有中间表的数据时的bug
 
