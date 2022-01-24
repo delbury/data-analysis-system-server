@@ -1,6 +1,7 @@
 import Router from 'koa-router';
 import { DB, createTable, runSql } from '../db/mysql';
 import { setResult } from '~/util';
+import { nanoid } from 'nanoid';
 import {
   WorkbenchTable,
   TeamGroupTable,
@@ -41,6 +42,7 @@ const teamGroupInitData: Partial<TeamGroupTable>[] = [
   { name: '5号线消防工班', type: 1 },
   { name: '5号线综合监控工班', type: 1 },
   { name: '5号线屏电工班', type: 1 },
+  { name: '技术组', type: 1 },
   { name: '中铁十二局', type: 2 },
   { name: '正立消防', type: 2 },
   { name: '奥的斯机电', type: 2 },
@@ -50,25 +52,25 @@ const teamGroupInitData: Partial<TeamGroupTable>[] = [
   // { name: '惠民登辉', type: 2 },
   { name: '方大', type: 2 },
   { name: '维创', type: 2 },
-  { name: '技术组', type: 2 },
 ];
 const roleInitData: Partial<RoleTable>[] = [
   { name: '管理员', is_system: 1 },
-  { name: '用户' },
+  ...teamGroupInitData.map(it => ({ name: it.name + '用户' })),
 ];
-const middleRolePermission = [
-  [0, 0], [1, 1],
-];
+const middleRolePermission = roleInitData.map((it, ind) => [ind, ind]);
 const permissionInitData: Partial<PermissionTable>[] = [
   { name: '管理员权限', apis: ['all'], path: '/', is_system: 1 },
-  { name: '培训计划完成表', apis: ['workbench'], datas: ['workbench.group_id.1'], path: '/workbench' },
 ];
-const middleAccountRole = [
-  [0, 0], [1, 1],
-];
+const middleAccountRole = middleRolePermission;
 const accountInitData: Partial<AccountTable>[] = [
   { name: '管理员账号', account: 'admin', password: '123456a', is_system: 1 },
-  { name: '用户账号', account: 'test', password: '123456a' },
+  ...teamGroupInitData.map(
+    (it, index) => ({
+      name: it.name + '账号',
+      account: `user${(index + 1).toString().padStart(3, '0')}`,
+      password: nanoid(8),
+    })
+  ),
 ];
 
 export const initDbTables = async (globalForce = false) => {
@@ -77,18 +79,27 @@ export const initDbTables = async (globalForce = false) => {
 
   // 班组表
   const resTeamGroupCreate = await createTable(teamGroupTableConfig, globalForce);
-  if(resTeamGroupCreate) await dbTeamGroup.insert(teamGroupInitData, true);
+  const resTeamGroup = resTeamGroupCreate ? await dbTeamGroup.insert(teamGroupInitData, true) : null;
+  (resTeamGroup as any[] ?? []).forEach((item, index) => {
+    const id = item.insertId;
+    permissionInitData.push({
+      name: teamGroupInitData[index].name + '权限',
+      apis: ['workbench', 'team_group'],
+      datas: [`workbench.group_id.${id}`, `team_group.id.${id}`],
+      path: '/workbench',
+    });
+  });
 
   // 人员表
   const resStaffCreate = await createTable(staffTableConfig, globalForce);
 
-  // 角色表
-  const resRoleCreate = await createTable(roleTableConfig, globalForce);
-  const resRole = resRoleCreate ? await dbRole.insert(roleInitData, true) : null;
-
   // 权限表
   const resPermissionCreate = await createTable(permissionConfig, globalForce);
   const resPermission = resPermissionCreate ? await dbPermission.insert(permissionInitData, true) : null;
+
+  // 角色表
+  const resRoleCreate = await createTable(roleTableConfig, globalForce);
+  const resRole = resRoleCreate ? await dbRole.insert(roleInitData, true) : null;
 
   // 账号表
   const resAccountCreate = await createTable(accountConfig, globalForce);
