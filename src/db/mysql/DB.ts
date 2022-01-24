@@ -551,6 +551,17 @@ export class DB<T extends CommonTable> {
     return res.list?.[0];
   }
 
+  // 查询总数
+  async count(filters?: string[]) {
+    const sql = `SELECT COUNT(*) as total FROM ${this.tableName}` +
+      (filters
+        ? ` WHERE ${filters.join(' AND ')}`
+        : '');
+
+    const res = await this.runSql(sql);
+    return res[0].total as number;
+  }
+
   // 创建连接
   createConnection(cb?: () => void) {
     return new Promise((resolve, reject) => {

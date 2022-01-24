@@ -4,6 +4,7 @@
 
 import Koa from 'koa';
 import { AUTH_PATH_REG, ENV_PATH_REG } from '~/router';
+import { setError } from '~/util';
 
 export const authControl: Koa.Middleware = async (ctx, next) => {
   // 排除 auth 相关接口
@@ -13,11 +14,7 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
 
   if(!ctx.session.userInfo) {
     // 没有登录
-    ctx.status = 412;
-    ctx.body = {
-      code: 412,
-      msg: '请登录',
-    };
+    setError(ctx, 412, '请登录');
   } else {
     const pmap = ctx.session.apisMap as Record<string, boolean>;
     const method = ctx.method.toUpperCase();
@@ -38,10 +35,6 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
       return await next();
     }
 
-    ctx.status = 412;
-    ctx.body = {
-      code: 412,
-      msg: '没有该接口权限，请联系管理员',
-    };
+    setError(ctx, 412, '没有该接口权限，请联系管理员');
   }
 };

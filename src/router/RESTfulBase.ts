@@ -1,8 +1,8 @@
 import Router from 'koa-router';
-import { DB } from '../db/mysql';
-import { Response } from '../interface';
+import { DB } from '~/db/mysql';
 import Koa from 'koa';
 import { CommonTable } from '~types/tables/Common';
+import { setError, setResult } from '~/util';
 
 interface Hanlders {
   beforeInsert?: (ctx: Koa.ParameterizedContext, data: Record<string, any>) => Promise<string | void>;
@@ -64,13 +64,10 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
         }, 'auto'),
         { filterDeleted: true }
       );
-      ctx.body = <Response>{
-        code: 200,
-        data: {
-          total: res.total,
-          list: res.list,
-        },
-      };
+      setResult(ctx, {
+        total: res.total,
+        list: res.list,
+      });
     })
     // 详情
     .get('/list/:id', async (ctx) => {
@@ -79,17 +76,9 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
 
       const res = await db.detail(id, db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}));
       if(res) {
-        ctx.body = <Response>{
-          code: 200,
-          data: res,
-        };
+        setResult(ctx, res);
       } else {
-        ctx.status = 400;
-        ctx.body = <Response>{
-          code: 400,
-          data: null,
-          msg: NODATA_OR_NOAUTH_MSG,
-        };
+        setError(ctx, 400, NODATA_OR_NOAUTH_MSG);
       }
     })
     // 添加
@@ -100,11 +89,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
         if(handlers.beforeInsert) {
           const checkRes = await handlers.beforeInsert(ctx, data);
           if(checkRes) {
-            ctx.status = 400;
-            ctx.body = <Response>{
-              code: 400,
-              msg: checkRes,
-            };
+            setError(ctx, 400, checkRes);
             return;
           }
         }
@@ -120,17 +105,9 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
           await handlers.afterInseart(ctx, res.insertId as string);
         }
 
-        ctx.body = <Response>{
-          code: 200,
-          data: null,
-        };
+        setResult(ctx);
       } else {
-        ctx.status = 400;
-        ctx.body = <Response>{
-          code: 400,
-          data: null,
-          msg: NOAUTH_MSG,
-        };
+        setError(ctx, 400, NOAUTH_MSG);
       }
 
     })
@@ -155,17 +132,10 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
         if(handlers.afterUpdate) {
           await handlers.afterUpdate(ctx, id);
         }
-        ctx.body = <Response>{
-          code: 200,
-          data: null,
-        };
+
+        setResult(ctx);
       } else {
-        ctx.status = 400;
-        ctx.body = <Response>{
-          code: 400,
-          data: null,
-          msg: NOAUTH_MSG,
-        };
+        setError(ctx, 400, NOAUTH_MSG);
       }
     })
     // 删除
@@ -186,22 +156,14 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       );
 
       if(!res.affectedRows) {
-        ctx.status = 400;
-        ctx.body = <Response>{
-          code: 400,
-          data: null,
-          msg: NODATA_OR_NOAUTH_MSG,
-        };
+        setError(ctx, 400, NODATA_OR_NOAUTH_MSG);
       } else {
         // 删除成功后的回调
         if(handlers.afterDelete) {
           await handlers.afterDelete(ctx, id);
         }
 
-        ctx.body = <Response>{
-          code: 200,
-          data: null,
-        };
+        setResult(ctx);
       }
     });
 

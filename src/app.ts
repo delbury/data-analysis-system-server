@@ -7,6 +7,7 @@ import session from 'koa-session';
 import { sessionConfig } from './configs/session';
 import { authControl } from './middlewares/auth-control';
 import { initDbTables } from '~/router/env';
+import { setError } from '~/util';
 
 const app = new Koa();
 app.keys = ['wHlAEu0VOzHPRCcVj2TjPk1jWk9vOeVJ'];
@@ -18,11 +19,7 @@ app
       await next();
     } catch(err) {
       console.error(err);
-      ctx.status = 400;
-      ctx.body = <Response>{
-        code: 400,
-        msg: err.message,
-      };
+      setError(ctx, 400, err.message);
     }
   })
   .use(session(sessionConfig, app))

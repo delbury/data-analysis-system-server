@@ -1,5 +1,6 @@
 import Router from 'koa-router';
 import { DB, createTable, runSql } from '../db/mysql';
+import { setResult } from '~/util';
 import {
   WorkbenchTable,
   TeamGroupTable,
@@ -18,7 +19,6 @@ import permissionConfig from '../db/tables/permission_table';
 import accountConfig from '../db/tables/account_table';
 import middleRolePermissionConfig from '../db/tables/middle_role_permission_table';
 import middleAccountRoleConfig from '../db/tables/middle_account_role_table';
-
 
 const router = new Router();
 
@@ -123,24 +123,14 @@ export const initDbTables = async (globalForce = false) => {
 
 router
   .get('/test', async (ctx) => {
-    ctx.body = {
-      code: 200,
-      msg: 'GET OK',
-    };
+    setResult(ctx, null, 'GET OK');
   })
   .post('/test', async (ctx) => {
-    ctx.body = {
-      code: 200,
-      msg: 'POST OK',
-    };
+    setResult(ctx, null, 'POST OK');
   })
   .post('/init', async (ctx) => {
     await initDbTables();
-
-    ctx.body = {
-      msg: 'INIT OK',
-      // res,
-    };
+    setResult(ctx, null, 'INIT OK');
   });
 
 export default {

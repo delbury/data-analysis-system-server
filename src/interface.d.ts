@@ -1,7 +1,7 @@
 export interface Response<T = any> {
   code: number;
   msg?: string;
-  data: T;
+  data?: T | null;
 }
 
 // 返回列表

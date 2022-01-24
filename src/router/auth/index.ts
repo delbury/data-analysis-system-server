@@ -3,6 +3,7 @@ import Router from 'koa-router';
 import { Response } from '~/interface';
 import { db as dbAccount } from '../account';
 import { updateSession } from './tools';
+import { setResult, setError } from '~/util';
 
 const router = new Router();
 
@@ -17,20 +18,12 @@ router
     );
 
     if(!res.total) {
-      ctx.status = 412;
-      ctx.body = <Response>{
-        code: 412,
-        data: null,
-        msg: '账号或密码错误',
-      };
+      setError(ctx, 412, '账号或密码错误');
     } else {
       // 查询并设置 session
       await updateSession(ctx, res.list[0]);
 
-      ctx.body = <Response>{
-        code: 200,
-        data: ctx.session.userInfo,
-      };
+      setResult(ctx, ctx.session.userInfo);
     }
   })
   // 登出
@@ -38,17 +31,12 @@ router
     if(ctx.session) {
       ctx.session = null;
     }
-    ctx.body = {
-      code: 200,
-      data: null,
-    };
+
+    setResult(ctx);
   })
   // 获取已登录用户信息
   .get('/info', async (ctx) => {
-    ctx.body = {
-      code: 200,
-      data: ctx.session?.userInfo ?? null,
-    };
+    setResult(ctx, ctx.session?.userInfo ?? null);
   })
   .put('/password', async (ctx) => {
     const { oldPassword, newPassword, newPasswordCheck } = ctx.request.body;
@@ -76,11 +64,11 @@ router
       }
     }
 
-    ctx.status = status;
-    ctx.body = {
-      code: status,
-      msg,
-    };
+    if(status === 200) {
+      setResult(ctx, null, msg);
+    } else {
+      setError(ctx, status, msg);
+    }
   });
 
 export default {
