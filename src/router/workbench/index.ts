@@ -23,7 +23,7 @@ router.router.get('/projectcode', async (ctx) => {
     setError(ctx);
   } else {
     const year = (new Date).getFullYear();
-    const count = await db.count(db.resolveFilters({ train_project_name: project }, 'equal', false));
+    const count = await db.count(db.resolveFilters({ train_project_name: project }, { type: 'equal', hasPrefix: false }));
     const formatedCount = (count + 1).toString().padStart(3, '0');
     const fullCode = `${year}-YY1-${code}-${formatedCount}`;
     setResult(ctx, fullCode);

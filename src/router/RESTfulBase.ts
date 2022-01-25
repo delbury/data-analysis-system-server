@@ -62,7 +62,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
           ...filters,
           // 数据权限
           ...(ctx.session.datasMap[db.tableName] ?? {}),
-        }, 'auto'),
+        }, { type: 'auto' }),
         { filterDeleted: true }
       );
       setResult(ctx, {
@@ -160,7 +160,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       // 逻辑删除
       const res = await db.softDelete(
         id,
-        db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, void 0, false)
+        db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, { type: 'equal', hasPrefix: false })
       );
 
       if(!res.affectedRows) {

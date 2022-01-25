@@ -118,7 +118,7 @@ export class DB<T extends CommonTable> {
       this.setCurrentTable(md.config.middleTableName);
       await this.deleteBy(this.resolveFilters({
         [md.config.middleMainField]: `${id}`,
-      }, 'equal', false));
+      }, { type: 'equal', hasPrefix: false }));
       this.clearCurrentTable();
     }
   }
@@ -364,10 +364,14 @@ export class DB<T extends CommonTable> {
   // 处理查询条件
   resolveFilters(
     filters: Record<string, string | string[]>,
-    type: 'auto' | 'equal' | 'like' = 'equal',
-    // 是否需要 prefix 默认 "a."
-    hasPrefix = true,
+    opts?: {
+      // 查询类型
+      type?: 'auto' | 'equal' | 'like';
+      // 是否需要 prefix 默认 "a."
+      hasPrefix?: boolean;
+    },
   ) {
+    const { type = 'equal', hasPrefix = true } = opts ?? {};
     const res: string[] = [];
     Object.entries(filters).forEach(([key, val]) => {
       // 判断是否是 range 类型的查询条件

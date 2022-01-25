@@ -1,9 +1,6 @@
 import { createRouter } from '../RESTfulBase';
-import { DB } from '~/db/mysql';
-import { AccountTable } from '~types/tables';
 import { updateSession } from '../auth/tools';
-
-export const db = new DB<AccountTable>('account', {});
+import { db } from './db';
 
 export default createRouter(db, {
   // 更新 session

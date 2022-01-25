@@ -1,7 +1,7 @@
 
 import Router from 'koa-router';
 import { Response } from '~/interface';
-import { db as dbAccount } from '../account';
+import { db as dbAccount } from '../account/db';
 import { updateSession } from './tools';
 import { setResult, setError } from '~/util';
 

@@ -1,6 +1,6 @@
 import Koa from 'koa';
 import { AccountTable } from '~types/tables';
-import { db as dbAccount } from '../account';
+import { db as dbAccount } from '../account/db';
 import { db as dbRole } from '../role';
 
 export type ApisMap = Record<string, boolean>;

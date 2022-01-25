@@ -1,6 +1,6 @@
 import Router from 'koa-router';
 import { DB, createTable, runSql } from '../db/mysql';
-import { setResult } from '~/util';
+import { setResult, isAdmin, setError } from '~/util';
 import { nanoid } from 'nanoid';
 import {
   WorkbenchTable,
@@ -140,8 +140,14 @@ router
     setResult(ctx, null, 'POST OK');
   })
   .post('/init', async (ctx) => {
-    await initDbTables();
-    setResult(ctx, null, 'INIT OK');
+    if(await isAdmin(ctx)) {
+      const { force = false } = ctx.request.body;
+      console.log(ctx.request.body);
+      await initDbTables(force);
+      setResult(ctx, null, 'INIT OK');
+    } else {
+      setError(ctx, 412, '没有权限');
+    }
   });
 
 export default {
