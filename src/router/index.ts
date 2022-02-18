@@ -6,6 +6,7 @@ import staff from './staff';
 import role from './role';
 import permission from './permission';
 import account from './account';
+import trainer from './trainer';
 // 权限相关
 import auth from './auth';
 // 环境相关
@@ -29,6 +30,7 @@ const controllers: { baseUrl: string, router: Router }[] = [
   account,
   auth,
   env,
+  trainer,
 ];
 
 const router = new Router();

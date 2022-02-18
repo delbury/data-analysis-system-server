@@ -12,6 +12,7 @@ import accountTable from '../tables/account_table';
 import permissionTable from '../tables/permission_table';
 import middleRolePermission from '../tables/middle_role_permission_table';
 import middleAccountRole from '../tables/middle_account_role_table';
+import trainerTable from '../tables/trainer_table';
 
 // 范围类型查询条件的前缀
 export const REGS = {
@@ -37,6 +38,7 @@ export const DB_TABLE_MAP: { [key in TableNames]: { config: DBTable, map: Record
   permission: getMap(permissionTable),
   middle_role_permission: getMap(middleRolePermission),
   middle_account_role: getMap(middleAccountRole),
+  trainer: getMap(trainerTable),
 };
 
 export const mysqlConfig: ConnectionConfig = {

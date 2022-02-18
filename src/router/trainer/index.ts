@@ -1,7 +1,7 @@
 import { createRouter } from '../RESTfulBase';
 import { DB } from '~/db/mysql';
-import { StaffTable } from '~types/tables';
+import { TrainerTable } from '~types/tables';
 
-const db = new DB<StaffTable>('staff', {});
+const db = new DB<TrainerTable>('trainer', {});
 
 export default createRouter(db);

@@ -11,6 +11,7 @@ import {
   AccountTable,
   MiddleRolePermissionTable,
   MiddleAccountRoleTable,
+  TrainerTable,
 } from '~types/tables';
 import workbenchTableConfig from '../db/tables/workbench_table';
 import teamGroupTableConfig from '../db/tables/team_group_table';
@@ -20,6 +21,7 @@ import permissionConfig from '../db/tables/permission_table';
 import accountConfig from '../db/tables/account_table';
 import middleRolePermissionConfig from '../db/tables/middle_role_permission_table';
 import middleAccountRoleConfig from '../db/tables/middle_account_role_table';
+import trainerTableConfig from '../db/tables/trainer_table';
 
 const router = new Router();
 
@@ -31,6 +33,7 @@ const dbPermission = new DB<PermissionTable>('permission');
 const dbAccount = new DB<PermissionTable>('account');
 const dbMiddleRolePermission = new DB<PermissionTable>('middle_role_permission');
 const dbMiddleAccountRole = new DB<PermissionTable>('middle_account_role');
+const dbTrainer = new DB<TrainerTable>('trainer');
 
 // 初始化数据
 const teamGroupInitData: Partial<TeamGroupTable>[] = [
@@ -92,6 +95,9 @@ export const initDbTables = async (globalForce = false) => {
 
   // 人员表
   const resStaffCreate = await createTable(staffTableConfig, globalForce);
+
+  // 培训师表
+  const resTrainerCreate = await createTable(trainerTableConfig, globalForce);
 
   // 权限表
   const resPermissionCreate = await createTable(permissionConfig, globalForce);
