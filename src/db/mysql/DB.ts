@@ -249,9 +249,9 @@ export class DB<T extends CommonTable> {
   async update<R = Partial<T>>(id: string | number, data: R, opts?: {
     force?: boolean;
   }) {
-    await this.writeGuard(id as string, opts.force);
+    await this.writeGuard(id as string, opts?.force);
 
-    const { filteredData, middleDatas } = this.filterField(data, false, opts.force);
+    const { filteredData, middleDatas } = this.filterField(data, false, opts?.force);
     const kvs: string[] = [];
     Object.entries(filteredData).forEach(([k, v]) => {
       if(v !== void 0) {
