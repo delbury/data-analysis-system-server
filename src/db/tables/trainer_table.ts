@@ -12,11 +12,11 @@ const table: DBTable = {
       key: 'name',
       type: 'VARCHAR(100)',
     },
-    {
-      key: 'staff_id',
-      type: 'INT(11) UNSIGNED',
-      comment: '关联的系统内的员工',
-    },
+    // {
+    //   key: 'staff_id',
+    //   type: 'INT(11) UNSIGNED',
+    //   comment: '关联的系统内的员工',
+    // },
     {
       key: 'code',
       type: 'CHAR(20)',

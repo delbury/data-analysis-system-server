@@ -3,8 +3,6 @@ import { CommonTable } from './Common';
 export interface TrainerTable extends CommonTable {
   company: string;
   name: string;
-  // 关联的系统内的员工
-  staff_id: number;
   code: string;
   phone: string;
   type: number;
