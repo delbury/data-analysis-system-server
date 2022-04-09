@@ -16,7 +16,7 @@ export const updateSession = async (ctx: Koa.ParameterizedContext, idOrInfo?: st
     info = await dbAccount.detail(ctx.session.userInfo.id);
   } else if(typeof idOrInfo === 'string') {
     // 当传入的值为 id
-    info = await dbAccount.detail(idOrInfo, dbAccount.resolveFilters({ is_delete: '0' }),);
+    info = await dbAccount.detail(idOrInfo, dbAccount.resolveFilters({ is_delete: '0' }).resolved);
   } else {
     // 当传入的值为 user info
     info = idOrInfo;
@@ -26,7 +26,7 @@ export const updateSession = async (ctx: Koa.ParameterizedContext, idOrInfo?: st
 
   // 查询所有权限
   const roleIds = info.roles.map(it => `${it.id}`);
-  const roles = await dbRole.search({ all: 1 }, dbRole.resolveFilters({ id: roleIds }));
+  const roles = await dbRole.search({ all: 1 }, dbRole.resolveFilters({ id: roleIds }).resolved);
   const permissions = roles.list.map(it => it.permissions).flat();
 
   // 接口权限

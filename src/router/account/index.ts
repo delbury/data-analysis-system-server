@@ -22,7 +22,7 @@ export default createRouter(db, {
   beforeInsert: async (ctx, data) => {
     const res = await db.search(
       { all: 1 },
-      db.resolveFilters({ account: data.account, is_delete: '0' })
+      db.resolveFilters({ account: data.account, is_delete: '0' }).resolved
     );
     if(res.total) return '该帐号已存在';
   },

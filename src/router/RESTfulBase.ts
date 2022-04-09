@@ -56,14 +56,17 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       delete filters.orderBy;
       delete filters.order;
 
+      // 处理筛选条件
+      const resultFilters = db.resolveFilters({
+        ...filters,
+        // 数据权限
+        ...(ctx.session.datasMap[db.tableName] ?? {}),
+      }, { type: 'auto' });
+
       const res = await db.search(
         { pageSize, pageNumber, all, orderBy, order },
-        db.resolveFilters({
-          ...filters,
-          // 数据权限
-          ...(ctx.session.datasMap[db.tableName] ?? {}),
-        }, { type: 'auto' }),
-        { filterDeleted: true }
+        resultFilters.resolved,
+        { filterDeleted: true, unresolvedFilter: resultFilters.unresolved }
       );
       setResult(ctx, {
         total: res.total,
@@ -75,7 +78,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       const id: string = ctx.params.id;
       if(!id) throw Error('no id');
 
-      const res = await db.detail(id, db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}));
+      const res = await db.detail(id, db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}).resolved);
       if(res) {
         setResult(ctx, res);
       } else {
@@ -159,7 +162,7 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       // 逻辑删除
       const res = await db.softDelete(
         id,
-        db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, { type: 'equal', hasPrefix: false })
+        db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, { type: 'equal', hasPrefix: false }).resolved
       );
 
       if(!res.affectedRows) {

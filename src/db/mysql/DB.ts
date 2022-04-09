@@ -118,7 +118,7 @@ export class DB<T extends CommonTable> {
       this.setCurrentTable(md.config.middleTableName);
       await this.deleteBy(this.resolveFilters({
         [md.config.middleMainField]: `${id}`,
-      }, { type: 'equal', hasPrefix: false }));
+      }, { type: 'equal', hasPrefix: false }).resolved);
       this.clearCurrentTable();
     }
   }
@@ -324,12 +324,15 @@ export class DB<T extends CommonTable> {
   }
 
   // 查询格式化
-  formatField(list: string[], tableName?: string) {
+  formatField(list: string[], tableName?: string): [string[], string[], Record<string, string>] {
     // join 语句
     const joins: string[] = [];
 
     // 最后查询结果的字段
     const fields: string[] = [];
+
+    // join 字段反向查询 map
+    const reverseMap: Record<string, string> = {};
 
     // 遍历
     list.forEach(it => {
@@ -351,15 +354,17 @@ export class DB<T extends CommonTable> {
       // 是否 join
       if(col.join_table && tableName) {
         const { table: jt, type, fieldsMap, joinedField: jf } = col.join_table;
+
         const joinSql = `${type} JOIN \`${jt}\` AS b ON a.\`${it}\`=b.\`${jf ?? PRIMARY_FIELD}\``;
         joins.push(joinSql);
         Object.entries(fieldsMap).forEach(([key, val]) => {
+          reverseMap[val] = key;
           fields.push(`b.\`${key}\` AS \`${val}\``);
         });
       }
     });
 
-    return [fields, joins];
+    return [fields, joins, reverseMap];
   }
   // 处理查询条件
   resolveFilters(
@@ -373,6 +378,8 @@ export class DB<T extends CommonTable> {
   ) {
     const { type = 'equal', hasPrefix = true } = opts ?? {};
     const res: string[] = [];
+    const unmatchedFilters: Record<string, any> = {};
+
     Object.entries(filters).forEach(([key, val]) => {
       // 判断是否是 range 类型的查询条件
       const isRange = REGS.range.test(key);
@@ -415,9 +422,14 @@ export class DB<T extends CommonTable> {
           }
         }).join(' OR ');
         res.push(filter);
+      } else {
+        unmatchedFilters[key] = val;
       }
     });
-    return res;
+    return {
+      resolved: res,
+      unresolved: unmatchedFilters,
+    };
   }
   // 查询
   async search(
@@ -429,9 +441,10 @@ export class DB<T extends CommonTable> {
     other?: {
       filterDeleted?: boolean; // 是否过滤软删除的数据
       filterJoinJson?: boolean; // 是否过滤 join 查询的数据
+      unresolvedFilter?: Record<string, any>; // 未处理过的筛选条件
     }
   ) {
-    const [fields, joins] = (() => {
+    const [fields, joins, reverseMap] = (() => {
       let formatList: string[] = [];
       if(this.tableIncludeFields) {
         // 只包含
@@ -503,8 +516,20 @@ export class DB<T extends CommonTable> {
         filter = ['a.`is_delete`=\'0\''];
       }
     }
-    if(filter?.length) {
-      sqls.push(`WHERE ${(filter ?? []).join(' AND ')}`);
+    // 插入额外查询条件
+    if(filter?.length || other.unresolvedFilter) {
+      const fls = [
+        ...(filter ?? []),
+      ];
+      // 过滤 join 表的字段
+      if(other.unresolvedFilter) {
+        Object.entries(other.unresolvedFilter).forEach(([key, val]) => {
+          if(reverseMap[key]) {
+            fls.push(`b.\`${reverseMap[key]}\`='${val}'`);
+          }
+        });
+      }
+      sqls.push(`WHERE ${fls.join(' AND ')}`);
     }
     if(hasJoinJson) {
       sqls.push(joinRes.groupBy);

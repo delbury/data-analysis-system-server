@@ -13,7 +13,7 @@ router
     const { account, password } = ctx.request.body;
     const res = await dbAccount.search(
       { pageNumber: 1, pageSize: 1 },
-      dbAccount.resolveFilters({ account, password }),
+      dbAccount.resolveFilters({ account, password }).resolved,
       { filterDeleted: true },
     );
 
@@ -53,7 +53,7 @@ router
     } else {
       const res = await dbAccount.search(
         { pageNumber: 1, pageSize: 1 },
-        dbAccount.resolveFilters({ account: ctx.session.userInfo.account, password: oldPassword })
+        dbAccount.resolveFilters({ account: ctx.session.userInfo.account, password: oldPassword }).resolved
       );
       if(!res.total) {
         status = 400;

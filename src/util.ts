@@ -38,7 +38,7 @@ export const isAdmin = async (ctx: Koa.ParameterizedContext) => {
     const res = await dbAccount.count(dbAccount.resolveFilters({
       account,
       password,
-    }, { type: 'equal', hasPrefix: false }));
+    }, { type: 'equal', hasPrefix: false }).resolved);
     return !!res;
   } catch(e) {
     console.log(e);
