@@ -167,9 +167,9 @@ export class DB<T extends CommonTable> {
     const { type } = col;
     let res: any = '';
     if(REGS.datetime.test(type)) {
-      res = `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')`;
+      res = v ? `DATE_FORMAT('${v}','%Y-%m-%d %H:%i:%s')` : v;
     } else if(REGS.date.test(type)) {
-      res = `DATE_FORMAT('${v}','%Y-%m-%d')`;
+      res = v ? `DATE_FORMAT('${v}','%Y-%m-%d')` : v;
     } else if(REGS.json.test(type)) {
       // JSON 类型
       // 具体 JSON 类型

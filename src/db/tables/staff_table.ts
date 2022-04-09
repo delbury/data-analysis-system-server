@@ -9,6 +9,11 @@ const table: DBTable = {
       type: 'VARCHAR(100)',
     },
     {
+      key: 'sex',
+      type: 'TINYINT',
+      comment: '性别，1：男，2：女',
+    },
+    {
       key: 'code',
       type: 'CHAR(20)',
     },
@@ -29,14 +34,24 @@ const table: DBTable = {
       },
     },
     {
-      key: 'job',
-      type: 'VARCHAR(100)',
-      comment: '职系序列',
-    },
-    {
       key: 'has_cert',
       type: 'TINYINT',
-      comment: '是否取得上岗资格证书',
+      comment: '是否取得上岗资格证书，0：否，1：是',
+    },
+    {
+      key: 'join_date',
+      type: 'date',
+      comment: '入职时间',
+    },
+    {
+      key: 'quit_date',
+      type: 'date',
+      comment: '离职时间',
+    },
+    {
+      key: 'status',
+      type: 'TINYINT',
+      comment: '人员状态，0：离职，1：在职',
     },
     {
       key: 'remark',

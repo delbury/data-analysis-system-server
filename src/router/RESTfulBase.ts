@@ -110,7 +110,6 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       } else {
         setError(ctx, 400, NOAUTH_MSG);
       }
-
     })
     // 修改
     .put('/list/:id', async (ctx) => {
@@ -173,7 +172,38 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
 
         setResult(ctx);
       }
-    });
+    })
+    // 导入
+    .post('/list/import', async (ctx) => {
+      const fieldsMap = ctx.session.datasMap[db.tableName];
+      const datas = ctx.request.body ?? [];
 
+      if(datas.every(data => isFieldValueValid(data, fieldsMap))) {
+        for await (const data of datas) {
+          if(handlers.beforeInsert) {
+            const checkRes = await handlers.beforeInsert(ctx, data);
+            if(checkRes) {
+              setError(ctx, 400, checkRes);
+              return;
+            }
+          }
+
+          const res = await db.insert({
+            ...data,
+            // 设置创建者
+            creater_id: ctx.session.userInfo.id as number,
+          });
+
+          // 添加成功后的回调
+          if(handlers.afterInseart) {
+            await handlers.afterInseart(ctx, res.insertId as string);
+          }
+        }
+
+        setResult(ctx);
+      } else {
+        setError(ctx, 400, NOAUTH_MSG);
+      }
+    });
   return { router, baseUrl: `/${db.tableName}` };
 };
