@@ -12,6 +12,7 @@ import {
   runSql,
   mysqlConfig,
 } from './config';
+import { transferNumber2Char } from './util';
 
 interface DBConfig<T> {
   includeFields?: (keyof T)[];
@@ -324,7 +325,7 @@ export class DB<T extends CommonTable> {
   }
 
   // 查询格式化
-  formatField(list: string[], tableName?: string): [string[], string[], Record<string, string>] {
+  formatField(list: string[], tableName?: string): [string[], string[], Record<string, { key: string; tableAlias: string; }>] {
     // join 语句
     const joins: string[] = [];
 
@@ -332,10 +333,11 @@ export class DB<T extends CommonTable> {
     const fields: string[] = [];
 
     // join 字段反向查询 map
-    const reverseMap: Record<string, string> = {};
+    const reverseMap: Record<string, { key: string; tableAlias: string; }> = {};
 
+    const joinedCount = { value: 1 }; // join table 的计数器
     // 遍历
-    list.forEach(it => {
+    list.forEach((it, index) => {
       // 字段配置
       const col = this.tableColumns[it];
 
@@ -353,19 +355,68 @@ export class DB<T extends CommonTable> {
 
       // 是否 join
       if(col.join_table && tableName) {
-        const { table: jt, type, fieldsMap, joinedField: jf } = col.join_table;
-
-        const joinSql = `${type} JOIN \`${jt}\` AS b ON a.\`${it}\`=b.\`${jf ?? PRIMARY_FIELD}\``;
-        joins.push(joinSql);
-        Object.entries(fieldsMap).forEach(([key, val]) => {
-          reverseMap[val] = key;
-          fields.push(`b.\`${key}\` AS \`${val}\``);
+        this.recursiveJoin({
+          currentField: it,
+          currentTableAlias: 'a',
+          col,
+          joins,
+          fields,
+          reverseMap,
+          joinedCount,
         });
       }
     });
 
     return [fields, joins, reverseMap];
   }
+
+  // 递归处理 join
+  recursiveJoin(
+    params: {
+      currentField: string; // 用来 join 的当前表 field
+      currentTableAlias: string; // 当前表别名
+      col: DBTableCol; // 列配置
+      joins: string[]; // join 的 sql 数组
+      fields: string[]; // sql 选择的 field
+      reverseMap: Record<string, { key: string; tableAlias: string; }>; // 用来处理 join 表的字段查询
+      joinedCount: {value: number}; // join 的计数，用来转换成表别名
+    }
+  ) {
+    const { currentField, currentTableAlias, col, joins, fields, reverseMap, joinedCount } = params;
+    // 被 join 表的别名
+    const joinTableAlias = transferNumber2Char(joinedCount.value++);
+    const { table: jt, type, fieldsMap, joinedField: jf } = col.join_table;
+
+
+    const joinSql = `${type} JOIN \`${jt}\` AS ${joinTableAlias} ON ${currentTableAlias}.\`${currentField}\`=${joinTableAlias}.\`${jf ?? PRIMARY_FIELD}\``;
+    joins.push(joinSql);
+    Object.entries(fieldsMap).forEach(([key, val]) => {
+      reverseMap[val] = {
+        key,
+        tableAlias: joinTableAlias,
+      };
+      fields.push(`${joinTableAlias}.\`${key}\` AS \`${val}\``);
+    });
+
+    const targetTableConfigMap = DB_TABLE_MAP[jt].map;
+    if(targetTableConfigMap) {
+      // 递归调用
+      Object.entries(targetTableConfigMap).forEach(([key, val]) => {
+        if(val.join_table) {
+          this.recursiveJoin({
+            currentField: key,
+            currentTableAlias: joinTableAlias,
+            col: val,
+            joins,
+            fields,
+            reverseMap,
+            joinedCount,
+          });
+        }
+      });
+    }
+  }
+
   // 处理查询条件
   resolveFilters(
     filters: Record<string, string | string[]>,
@@ -517,15 +568,16 @@ export class DB<T extends CommonTable> {
       }
     }
     // 插入额外查询条件
-    if(filter?.length || other.unresolvedFilter) {
+    if(filter?.length || other?.unresolvedFilter) {
       const fls = [
         ...(filter ?? []),
       ];
       // 过滤 join 表的字段
-      if(other.unresolvedFilter) {
+      if(other?.unresolvedFilter) {
         Object.entries(other.unresolvedFilter).forEach(([key, val]) => {
-          if(reverseMap[key]) {
-            fls.push(`b.\`${reverseMap[key]}\`='${val}'`);
+          const opt = reverseMap[key];
+          if(opt) {
+            fls.push(`${opt.tableAlias}.\`${opt.key}\`='${val}'`);
           }
         });
       }
