@@ -3,6 +3,7 @@ import { getCommonTableColumns } from '../common';
 
 const table: DBTable = {
   name: 'trainer',
+  unique: ['staff_id'],
   columns: [
     // {
     //   key: 'company',
