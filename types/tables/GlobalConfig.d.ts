@@ -1,16 +1,14 @@
 import { CommonTable } from './Common';
-import { StaffTable } from './Staff';
 
-export interface TrainerTable extends CommonTable {
-  // 关联的系统内的员工
-  staff_id: number;
-  staff_name: StaffTable['name'];
-  staff_sex: StaffTable['sex'];
-  staff_code: StaffTable['code'];
-  staff_phone: StaffTable['phone'];
-  group_id: StaffTable['group_id'];
-  // 培训师星级
-  level: number;
+export interface GlobalConfigTable extends CommonTable {
+  // 配置项的名称
+  label: string;
+  // 配置项的key
+  key: string;
+  // 配置项的value
+  value: string;
+  // 配置项的value类型，1：int，2：float，3：string
+  type: number;
   remark: string;
   // 主键
   id: number;

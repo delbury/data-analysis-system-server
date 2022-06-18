@@ -12,6 +12,7 @@ import {
   MiddleRolePermissionTable,
   MiddleAccountRoleTable,
   TrainerTable,
+  GlobalConfigTable,
 } from '~types/tables';
 import workbenchTableConfig from '../db/tables/workbench_table';
 import teamGroupTableConfig from '../db/tables/team_group_table';
@@ -22,6 +23,7 @@ import accountConfig from '../db/tables/account_table';
 import middleRolePermissionConfig from '../db/tables/middle_role_permission_table';
 import middleAccountRoleConfig from '../db/tables/middle_account_role_table';
 import trainerTableConfig from '../db/tables/trainer_table';
+import globalConfigTableConfig from '../db/tables/global_config_table';
 
 const router = new Router();
 
@@ -34,6 +36,7 @@ const dbAccount = new DB<PermissionTable>('account');
 const dbMiddleRolePermission = new DB<PermissionTable>('middle_role_permission');
 const dbMiddleAccountRole = new DB<PermissionTable>('middle_account_role');
 const dbTrainer = new DB<TrainerTable>('trainer');
+const dbGlobalConfig = new DB<GlobalConfigTable>('global_config');
 
 // 初始化数据
 const teamGroupInitData: Partial<TeamGroupTable>[] = [
@@ -76,7 +79,31 @@ const accountInitData: Partial<AccountTable>[] = [
   ),
 ];
 
+const globalConfigData: Partial<GlobalConfigTable>[] = [
+  {
+    label: '项目编号偏移值',
+    key: 'project_code_offset',
+    value: '0',
+    type: 1,
+    is_system: 1,
+    remark: '全部项目编号的偏移值，如果要精确控制到某一类的偏移值，请创建 "project_code_offset_${code}" 的配置项',
+  },
+  { label: '项目编号偏移值-安全类培训', key: 'project_code_offset_116', value: '0', type: 1 },
+  { label: '项目编号偏移值-车间综合管理类培训', key: 'project_code_offset_117', value: '0', type: 1 },
+  { label: '项目编号偏移值-继续教育学时学分制培训', key: 'project_code_offset_118', value: '0', type: 1 },
+  { label: '项目编号偏移值-综合监控专业知识培训', key: 'project_code_offset_119', value: '0', type: 1 },
+  { label: '项目编号偏移值-消防专业知识培训', key: 'project_code_offset_120', value: '0', type: 1 },
+  { label: '项目编号偏移值-屏蔽门专业知识培训', key: 'project_code_offset_121', value: '0', type: 1 },
+  { label: '项目编号偏移值-电扶梯专业知识培训', key: 'project_code_offset_122', value: '0', type: 1 },
+  { label: '项目编号偏移值-风水电专业知识培训', key: 'project_code_offset_123', value: '0', type: 1 },
+  { label: '项目编号偏移值-AFC专业知识培训', key: 'project_code_offset_124', value: '0', type: 1 },
+];
+
 export const initDbTables = async (globalForce = false) => {
+  // 全局配置表
+  const resGlobalConfigCreate = await createTable(globalConfigTableConfig, globalForce);
+  const resGlobalConfig = resGlobalConfigCreate ? await dbGlobalConfig.insert(globalConfigData, true) : null;
+
   // 培训计划完成表
   const resWorkbenchCreate = await createTable(workbenchTableConfig, globalForce);
 

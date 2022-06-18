@@ -464,10 +464,10 @@ export class DB<T extends CommonTable> {
           if(REGS.number.test(col.type)) {
             return `${realKey}='${v}'`;
           } else {
-            v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
             if(type === 'equal') {
               return `${realKey}=BINARY '${v}'`;
             } else {
+              v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
               return `${realKey} LIKE '%${v}%'`;
             }
           }
@@ -597,7 +597,6 @@ export class DB<T extends CommonTable> {
       const offset: number = (params.pageNumber - 1) * params.pageSize;
       sqls.push(`LIMIT ${params.pageSize} OFFSET ${offset}`);
     }
-
     const fullsql = sqls.join(' ') + ';SELECT FOUND_ROWS() AS `total`;';
     const res = await this.runSql(fullsql);
     const json = JSON.parse(JSON.stringify(res));

@@ -3,15 +3,21 @@ import { TeamGroupTable } from './TeamGroup';
 
 export interface StaffTable extends CommonTable {
   name: string;
+  // 性别，1：男，2：女
+  sex: number;
   code: string;
   phone: string;
   group_id: number;
   group_name: TeamGroupTable['name'];
   group_type: TeamGroupTable['type'];
-  // 职系序列
-  job: string;
-  // 是否取得上岗资格证书
+  // 是否取得上岗资格证书，0：否，1：是
   has_cert: number;
+  // 入职时间
+  join_date: string;
+  // 离职时间
+  quit_date: string;
+  // 人员状态，0：离职，1：在职
+  status: number;
   remark: string;
   // 主键
   id: number;
