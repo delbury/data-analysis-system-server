@@ -1,7 +1,6 @@
 import { createRouter } from '../RESTfulBase';
-import { DB } from '~/db/mysql';
-import { GlobalConfigTable } from '~types/tables';
+import db from './db';
 
-const db = new DB<GlobalConfigTable>('global_config', {});
+const router = createRouter(db);
 
-export default createRouter(db);
+export default router;

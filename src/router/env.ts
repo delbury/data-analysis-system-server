@@ -85,7 +85,6 @@ const globalConfigData: Partial<GlobalConfigTable>[] = [
     key: 'project_code_offset',
     value: '0',
     type: 1,
-    is_system: 1,
     remark: '全部项目编号的偏移值，如果要精确控制到某一类的偏移值，请创建 "project_code_offset_${code}" 的配置项',
   },
   { label: '项目编号偏移值-安全类培训', key: 'project_code_offset_116', value: '0', type: 1 },

@@ -2,6 +2,7 @@ import { createRouter } from '~/router/RESTfulBase';
 import { DB } from '~/db/mysql';
 import { WorkbenchTable } from '~types/tables';
 import { setError, setResult } from '~/util';
+import { getConfig } from '../globalconfig/db';
 
 const db = new DB<WorkbenchTable>('workbench', {
   insertDataValidator: (data) => {
@@ -23,9 +24,13 @@ router.router.get('/projectcode', async (ctx) => {
   if(!project || !code || typeof project !== 'string' || typeof code !== 'string') {
     setError(ctx);
   } else {
+    const totalConfig = await getConfig('project_code_offset');
+    const codeConfig = await getConfig('project_code_offset_' + code);
+    const offset = (+totalConfig.list[0]?.value || 0) + (+codeConfig.list[0]?.value || 0);
+
     const year = (new Date).getFullYear();
     const count = await db.count(db.resolveFilters({ train_project_name: project }, { type: 'equal', hasPrefix: false }).resolved);
-    const formatedCount = (count + 1).toString().padStart(3, '0');
+    const formatedCount = (count + offset + 1).toString().padStart(3, '0');
     const fullCode = `${year}-YY1-${code}-${formatedCount}`;
     setResult(ctx, fullCode);
   }
