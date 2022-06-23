@@ -37,13 +37,30 @@ router.router.get('/projectcode', async (ctx) => {
 });
 
 // 变更为完成状态
-router.router.post('/complete', async (ctx) => {
-  const { id } = ctx.request.body;
-  console.log(id);
+router.router.post('/:id/complete', async (ctx) => {
+  const id = +(ctx.params.id);
   if(!id || (typeof id !== 'number')) {
     setError(ctx);
   } else {
     await db.update(id, { status: 2 }, { force: true });
+    setResult(ctx);
+  }
+});
+
+// 编辑参训人员
+router.router.put('/:id/staffs', async (ctx) => {
+  const id = +(ctx.params.id);
+  const staffs = ctx.request.body?.trained_staffs;
+  if(
+    !id ||
+    (typeof id !== 'number') ||
+    !staffs ||
+    !Array.isArray(staffs) ||
+    staffs.some(it => typeof it !== 'string' && typeof it !== 'number')
+  ) {
+    setError(ctx);
+  } else {
+    await db.update(id, { trained_staffs: staffs });
     setResult(ctx);
   }
 });

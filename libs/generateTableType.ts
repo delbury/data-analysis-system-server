@@ -82,6 +82,7 @@ function resolveTableModule(module: DBTable, isCommon = false): string {
     const isJson = jsonReg.test(item.type);
     const isStringList = item.json_type === 'string-array';
     const isObjectList = item.json_type === 'object-array';
+    const isNumberList = item.json_type === 'number-array';
     if(item.comment !== void 0) {
       contents.push(`  // ${item.comment}`);
     }
@@ -89,6 +90,7 @@ function resolveTableModule(module: DBTable, isCommon = false): string {
     if(isNumber) valueType = 'number';
     else if(isObjectList && isJson) valueType = '{}[]';
     else if(isStringList && isJson) valueType = 'string[]';
+    else if(isNumberList && isJson) valueType = 'number[]';
 
     contents.push(`  ${item.key}: ${valueType};`);
 

@@ -38,7 +38,7 @@ export interface DBTableCol {
     joinedField?: string;
   };
   // json 类型，配合 type: 'JSON' 使用
-  json_type?: 'object-array' | 'object' | 'string-array';
+  json_type?: 'object-array' | 'object' | 'string-array' | 'number-array';
 }
 
 // 表配置

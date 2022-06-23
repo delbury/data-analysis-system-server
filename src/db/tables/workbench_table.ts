@@ -6,6 +6,12 @@ const table: DBTable = {
   unique: ['train_project_name', 'project_code'],
   columns: [
     {
+      key: 'trained_staffs',
+      type: 'JSON',
+      comment: '参训人员id列表',
+      json_type: 'number-array',
+    },
+    {
       key: 'status',
       type: 'TINYINT',
       comment: '1：计划培训，2：完成培训',

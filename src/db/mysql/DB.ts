@@ -180,6 +180,9 @@ export class DB<T extends CommonTable> {
       if(col.json_type === 'object-array' && v?.some(it => typeof it !== 'object')) {
         throw new Error(`${k}: must be a object array`);
       }
+      if(col.json_type === 'number-array' && v?.some(it => typeof it !== 'number')) {
+        throw new Error(`${k}: must be a number array`);
+      }
       res = `'${JSON.stringify(v)}'`;
     } else {
       res = `'${REGS.number.test(type) ? Number(v) : v}'`;
@@ -692,6 +695,8 @@ export class DB<T extends CommonTable> {
           data[k] = Math.random() > 0.5 ? 1 : 0;
         } else if(REGS.number.test(v.type)) {
           data[k] = Math.floor(Math.random() * 10 + 1);
+        } else if(REGS.json.test(v.type)) {
+          data[k] = null;
         } else {
           data[k] = 'test';
         }

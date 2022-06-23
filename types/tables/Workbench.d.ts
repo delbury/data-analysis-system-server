@@ -2,6 +2,8 @@ import { CommonTable } from './Common';
 import { TeamGroupTable } from './TeamGroup';
 
 export interface WorkbenchTable extends CommonTable {
+  // 参训人员id列表
+  trained_staffs: number[];
   // 1：计划培训，2：完成培训
   status: number;
   date: string;
