@@ -18,7 +18,9 @@ router.router.get('/safelist', async (ctx) => {
   setResult(ctx, {
     ...res,
     // 脱敏
-    list: res.list.map(it => pick(it, ['name', 'code', 'group_name', 'group_id', 'sex', 'id'])),
+    list: res.list.map(it => pick(it, [
+      'name', 'code', 'group_name', 'group_id', 'sex', 'id', 'group_type',
+    ])),
   });
 });
 
