@@ -22,7 +22,7 @@ export const AUTH_PATH_REG = new RegExp(`${BASE_PATH}${auth.baseUrl}/`, 'i');
 export const ENV_PATH_REG = new RegExp(`${BASE_PATH}${env.baseUrl}/`, 'i');
 
 // 所有导入路由数组
-const controllers: { baseUrl: string, router: Router }[] = [
+const controllers: { baseUrl: string; router: Router; whiteList?: string[]; }[] = [
   workbench,
   teamgroup,
   staff,
@@ -37,5 +37,10 @@ const controllers: { baseUrl: string, router: Router }[] = [
 
 const router = new Router();
 controllers.forEach(c => router.use(BASE_PATH + c.baseUrl, c.router.routes()));
+
+// 接口白名单列表
+export const apiWhiteList = controllers
+  .map(it => (it.whiteList ?? []).map(path => BASE_PATH + it.baseUrl + path))
+  .flat();
 
 export default router;

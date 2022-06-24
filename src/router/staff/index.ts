@@ -22,4 +22,5 @@ router.router.get('/safelist', async (ctx) => {
   });
 });
 
+router.whiteList.push('/safelist');
 export default router;

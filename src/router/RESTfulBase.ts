@@ -208,5 +208,10 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
         setError(ctx, 400, NOAUTH_MSG);
       }
     });
-  return { router, baseUrl: `/${db.tableName}` };
+  return {
+    router,
+    baseUrl: `/${db.tableName}`,
+    // 不受权限限制的接口白名单
+    whiteList: [] as string[],
+  };
 };

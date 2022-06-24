@@ -5,6 +5,9 @@
 import Koa from 'koa';
 import { AUTH_PATH_REG, ENV_PATH_REG } from '~/router';
 import { setError } from '~/util';
+import { apiWhiteList } from '~/router';
+
+const apiWhiteListSet = new Set(apiWhiteList);
 
 export const authControl: Koa.Middleware = async (ctx, next) => {
   // 排除 auth 相关接口
@@ -16,6 +19,11 @@ export const authControl: Koa.Middleware = async (ctx, next) => {
     // 没有登录
     setError(ctx, 412, '请登录');
   } else {
+    // 命中白名单
+    if(apiWhiteListSet.has(ctx.path)) {
+      return await next();
+    }
+
     const pmap = ctx.session.apisMap as Record<string, boolean>;
     const method = ctx.method.toUpperCase();
     // 全局权限控制
