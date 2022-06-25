@@ -24,7 +24,7 @@ router.router.get('/safelist', async (ctx) => {
     ...res,
     // 脱敏
     list: res.list.map(it => pick(it, [
-      'name', 'code', 'group_name', 'group_id', 'sex', 'id', 'group_type', 'level',
+      'name', 'code', 'group_name', 'group_id', 'sex', 'id', 'group_type', 'level', 'position',
     ])),
   });
 });

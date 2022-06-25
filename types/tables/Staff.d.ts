@@ -10,6 +10,8 @@ export interface StaffTable extends CommonTable {
   group_id: number;
   group_name: TeamGroupTable['name'];
   group_type: TeamGroupTable['type'];
+  // 岗位
+  position: string;
   // 培训师星级，0：无，1：见习，2：一星，3：二星，4：三星
   level: number;
   // 是否取得上岗资格证书，0：否，1：是

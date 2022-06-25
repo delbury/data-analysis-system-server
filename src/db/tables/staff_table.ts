@@ -34,6 +34,11 @@ const table: DBTable = {
       },
     },
     {
+      key: 'position',
+      type: 'VARCHAR(100)',
+      comment: '岗位',
+    },
+    {
       key: 'level',
       type: 'TINYINT',
       comment: '培训师星级，0：无，1：见习，2：一星，3：二星，4：三星',
