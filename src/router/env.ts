@@ -174,9 +174,26 @@ router
   .post('/init', async (ctx) => {
     if(await isAdmin(ctx)) {
       const { force = false } = ctx.request.body;
-      console.log(ctx.request.body);
+
       await initDbTables(force);
       setResult(ctx, null, 'INIT OK');
+    } else {
+      setError(ctx, 412, '没有权限');
+    }
+  })
+  .post('/recreate', async (ctx) => {
+    if(await isAdmin(ctx)) {
+      const { tableName } = ctx.request.body;
+
+      switch(tableName) {
+        case 'workbench':
+          await createTable(workbenchTableConfig, true);
+          break;
+        default:
+          setError(ctx);
+          return;
+      }
+      setResult(ctx, null, `${tableName} CREATED OK`);
     } else {
       setError(ctx, 412, '没有权限');
     }
