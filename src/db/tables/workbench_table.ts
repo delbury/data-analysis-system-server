@@ -86,27 +86,27 @@ const table: DBTable = {
       type: 'VARCHAR(100)',
     },
     {
-      key: 'maintainer',
+      key: 'maintainer_name',
       type: 'VARCHAR(100)',
     },
     {
       key: 'maintainer_code',
       type: 'VARCHAR(20)',
     },
-    // {
-    //   key: 'maintainer_id',
-    //   type: 'INT(11)',
-    // },
+    {
+      key: 'maintainer_id',
+      type: 'INT(11)',
+    },
     {
       key: 'train_place',
       type: 'VARCHAR(100)',
     },
-    // {
-    //   key: 'trainer_id',
-    //   type: 'INT(11)',
-    // },
     {
-      key: 'trainer',
+      key: 'trainer_id',
+      type: 'INT(11)',
+    },
+    {
+      key: 'trainer_name',
       type: 'VARCHAR(100)',
     },
     {

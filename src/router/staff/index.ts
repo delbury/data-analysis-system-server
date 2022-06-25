@@ -9,10 +9,15 @@ const db = new DB<StaffTable>('staff', {});
 const router = createRouter(db);
 
 router.router.get('/safelist', async (ctx) => {
+  const filters = { ...(ctx.query ?? {}) };
+  const resultFilters = db.resolveFilters({
+    ...filters,
+  }, { type: 'like' });
+
   const res = await db.search(
     { all: 1 },
-    [],
-    { filterDeleted: true }
+    resultFilters.resolved,
+    { filterDeleted: true, unresolvedFilter: resultFilters.unresolved, useLike: true }
   );
 
   setResult(ctx, {

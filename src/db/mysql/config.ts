@@ -134,3 +134,7 @@ export const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
     });
   });
 };
+
+// 转义 sql 查询值
+export const transferSqlSearchValue = (v: string) =>
+  v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);

@@ -11,6 +11,7 @@ import {
   REGS,
   runSql,
   mysqlConfig,
+  transferSqlSearchValue,
 } from './config';
 import { transferNumber2Char } from './util';
 
@@ -470,13 +471,20 @@ export class DB<T extends CommonTable> {
             if(type === 'equal') {
               return `${realKey}=BINARY '${v}'`;
             } else {
-              v = v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
+              v = transferSqlSearchValue(v);
               return `${realKey} LIKE '%${v}%'`;
             }
           }
         }).join(' OR ');
         res.push(filter);
       } else {
+        if(type !== 'equal') {
+          if(Array.isArray(val)) {
+            val = val.map(v => transferSqlSearchValue(v));
+          } else {
+            val = transferSqlSearchValue(val);
+          }
+        }
         unmatchedFilters[key] = val;
       }
     });
@@ -496,6 +504,7 @@ export class DB<T extends CommonTable> {
       filterDeleted?: boolean; // 是否过滤软删除的数据
       filterJoinJson?: boolean; // 是否过滤 join 查询的数据
       unresolvedFilter?: Record<string, any>; // 未处理过的筛选条件
+      useLike?: boolean; // 是否模糊查询
     }
   ) {
     const [fields, joins, reverseMap] = (() => {
@@ -580,7 +589,11 @@ export class DB<T extends CommonTable> {
         Object.entries(other.unresolvedFilter).forEach(([key, val]) => {
           const opt = reverseMap[key];
           if(opt) {
-            fls.push(`${opt.tableAlias}.\`${opt.key}\`='${val}'`);
+            if(other?.useLike) {
+              fls.push(`${opt.tableAlias}.\`${opt.key}\` LIKE '%${val}%'`);
+            } else {
+              fls.push(`${opt.tableAlias}.\`${opt.key}\`='${val}'`);
+            }
           }
         });
       }

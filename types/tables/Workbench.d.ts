@@ -23,10 +23,12 @@ export interface WorkbenchTable extends CommonTable {
   train_way2: string;
   train_type: string;
   train_class: string;
-  maintainer: string;
+  maintainer_name: string;
   maintainer_code: string;
+  maintainer_id: number;
   train_place: string;
-  trainer: string;
+  trainer_id: number;
+  trainer_name: string;
   trainer_code: string;
   // 0：无，1：见习，2：一星，3：二星，4：三星
   trainer_level: number;
