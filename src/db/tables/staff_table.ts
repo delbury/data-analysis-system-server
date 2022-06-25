@@ -34,6 +34,12 @@ const table: DBTable = {
       },
     },
     {
+      key: 'level',
+      type: 'TINYINT',
+      comment: '培训师星级，0：无，1：见习，2：一星，3：二星，4：三星',
+      default: 0,
+    },
+    {
       key: 'has_cert',
       type: 'TINYINT',
       comment: '是否取得上岗资格证书，0：否，1：是',
