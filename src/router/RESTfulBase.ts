@@ -154,16 +154,16 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
       if(!id) throw Error('no id');
 
       // 物理删除
-      // const res = await db.delete(
-      //   id,
-      //   { fullDelete: true },
-      //   db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, void 0, false)
-      // );
-      // 逻辑删除
-      const res = await db.softDelete(
+      const res = await db.delete(
         id,
+        { fullDelete: true },
         db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, { type: 'equal', hasPrefix: false }).resolved
       );
+      // 逻辑删除
+      // const res = await db.softDelete(
+      //   id,
+      //   db.resolveFilters(ctx.session.datasMap[db.tableName] ?? {}, { type: 'equal', hasPrefix: false }).resolved
+      // );
 
       if(!res.affectedRows) {
         setError(ctx, 400, NODATA_OR_NOAUTH_MSG);
