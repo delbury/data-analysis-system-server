@@ -3,6 +3,7 @@ import { DB } from '~/db/mysql';
 import { WorkbenchTable } from '~types/tables';
 import { setError, setResult } from '~/util';
 import { getConfig } from '../globalconfig/db';
+import pick from 'lodash/pick';
 
 const db = new DB<WorkbenchTable>('workbench', {
   insertDataValidator: (data) => {
@@ -36,13 +37,27 @@ router.router.get('/projectcode', async (ctx) => {
   }
 });
 
-// 变更为完成状态
-router.router.post('/:id/complete', async (ctx) => {
+// 修改培训完成情况，并变更为完成状态
+router.router.put('/:id/complete', async (ctx) => {
   const id = +(ctx.params.id);
+  const data = pick(ctx.request.body ?? {}, [
+    'train_effect_count',
+    'student_evaluation_score',
+    'maintainer_evaluation_score',
+    'effect_evaluation_score',
+    'course_pay',
+    'trained_count_manage',
+    'trained_count_key',
+    'trained_count_product',
+    'trained_count_new',
+    'trained_count_work',
+    'trained_count_total',
+  ]);
+
   if(!id || (typeof id !== 'number')) {
     setError(ctx);
   } else {
-    await db.update(id, { status: 2 }, { force: true });
+    await db.update(id, { status: 2, ...data }, { force: true });
     setResult(ctx);
   }
 });
