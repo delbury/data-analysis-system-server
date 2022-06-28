@@ -1,6 +1,8 @@
+import { promisify } from 'util';
+import child_process from 'child_process';
 import Router from 'koa-router';
-import { DB, createTable, runSql } from '../db/mysql';
-import { setResult, isAdmin, setError } from '~/util';
+import { DB, createTable, mysqlConfig } from '../db/mysql';
+import { setResult, isAdmin, setError, setBinaryResult, getDateTimeString } from '~/util';
 import { nanoid } from 'nanoid';
 import {
   WorkbenchTable,
@@ -24,6 +26,8 @@ import middleRolePermissionConfig from '../db/tables/middle_role_permission_tabl
 import middleAccountRoleConfig from '../db/tables/middle_account_role_table';
 import trainerTableConfig from '../db/tables/trainer_table';
 import globalConfigTableConfig from '../db/tables/global_config_table';
+
+const exec = promisify(child_process.exec);
 
 const router = new Router();
 
@@ -181,6 +185,7 @@ router
       setError(ctx, 412, '没有权限');
     }
   })
+  // 初始化数据库表
   .post('/recreate', async (ctx) => {
     if(await isAdmin(ctx)) {
       const { tableName } = ctx.request.body;
@@ -194,6 +199,19 @@ router
           return;
       }
       setResult(ctx, null, `${tableName} CREATED OK`);
+    } else {
+      setError(ctx, 412, '没有权限');
+    }
+  })
+  // 数据库备份
+  .get('/backup', async (ctx) => {
+    if(await isAdmin(ctx)) {
+      const pw = mysqlConfig.password;
+      const dbName = mysqlConfig.database;
+      const containerName = 'data-analysis-system_mysql_1';
+      const cmd = `docker exec ${containerName} bash -c 'exec mysqldump --databases ${dbName} -uroot -p"${pw}"'`;
+      const { stdout, stderr } = await exec(cmd);
+      setBinaryResult(ctx, stdout, `backup_${getDateTimeString()}.sql`);
     } else {
       setError(ctx, 412, '没有权限');
     }

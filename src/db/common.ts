@@ -1,5 +1,5 @@
 import { DBTableCol, DBTable } from './interface';
-import moment from 'moment';
+import { getDateTimeString } from '~/util';
 
 type Config = {
   id?: Partial<DBTableCol>
@@ -37,7 +37,7 @@ export const getCommonTableColumns: (config?: Config) => DBTableCol[] = (config 
     not_null: true,
     comment: '创建时间',
     write_only_insert: true,
-    create_default: () => moment(new Date()).format('YYYY-MM-DD HH:mm:ss'),
+    create_default: () => getDateTimeString(),
   },
   {
     key: 'last_modified_time',

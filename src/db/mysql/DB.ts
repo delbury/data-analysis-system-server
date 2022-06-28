@@ -1,7 +1,6 @@
 /**
  * 数据库操作类
  */
-import moment from 'moment';
 import { TableNames } from '~types/tables';
 import { CommonTable } from '~types/tables/Common';
 import { DBTableCol, DBTable, JoinJsonConfig } from '../interface';
@@ -14,6 +13,7 @@ import {
   transferSqlSearchValue,
 } from './config';
 import { transferNumber2Char } from './util';
+import { getDateTimeString, getDateString, getTimeString } from '~/util';
 
 interface DBConfig<T> {
   includeFields?: (keyof T)[];
@@ -135,7 +135,7 @@ export class DB<T extends CommonTable> {
 
     if(!isInsert) {
       // 更新修改时间
-      params.last_modified_time = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
+      params.last_modified_time = getDateTimeString();
     }
 
     // 过滤数据库中存在的字段
@@ -699,11 +699,11 @@ export class DB<T extends CommonTable> {
       const data = {};
       Object.entries(this.tableColumns).forEach(([k, v]) => {
         if(REGS.datetime.test(v.type)) {
-          data[k] = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
+          data[k] = getDateTimeString();
         } else if(REGS.time.test(v.type)) {
-          data[k] = moment(new Date()).format('HH:mm:ss');
+          data[k] = getTimeString();
         } else if(REGS.date.test(v.type)) {
-          data[k] = moment(new Date()).format('YYYY-MM-DD');
+          data[k] = getDateString();
         } else if(REGS.boolNumber.test(v.type)) {
           data[k] = Math.random() > 0.5 ? 1 : 0;
         } else if(REGS.number.test(v.type)) {
