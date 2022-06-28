@@ -5,6 +5,19 @@ import { setError, setResult } from '~/util';
 import { getConfig } from '../globalconfig/db';
 import pick from 'lodash/pick';
 
+// 项目名称/code 映射
+const PROJECT_NAME_CODES = [
+  { name: '安全类培训', code: 116 },
+  { name: '车间综合管理类培训', code: 117 },
+  { name: '继续教育学时学分制培训', code: 118 },
+  { name: '综合监控专业知识培训', code: 119 },
+  { name: '消防专业知识培训', code: 120 },
+  { name: '屏蔽门专业知识培训', code: 121 },
+  { name: '电扶梯专业知识培训', code: 122 },
+  { name: '风水电专业知识培训', code: 123 },
+  { name: 'AFC专业知识培训', code: 124 },
+];
+
 const db = new DB<WorkbenchTable>('workbench', {
   insertDataValidator: (data) => {
     // 数据校验
@@ -16,6 +29,48 @@ const router = createRouter(db, {
   // additionalUpdate: (ctx, data) => ({
   //   status: 2,
   // }),
+  resolveInseartData: async (ctx, data) => {
+    // 自动生成 project_code
+    const projectName = data.train_project_name;
+    const cfg = PROJECT_NAME_CODES.find(it => it.name === projectName);
+    if(!cfg) {
+      throw new Error('非法的项目名称');
+    }
+    const code = cfg.code;
+
+    // 编号的起始偏移值
+    const codeConfig = await getConfig('project_code_offset_' + code);
+    let offset = +codeConfig.list[0]?.value || 0;
+    if(!offset) {
+      // 如果没有具体的编号偏移值，则去查询全局的偏移值
+      const totalConfig = await getConfig('project_code_offset');
+      offset = +totalConfig.list[0]?.value || 0;
+    }
+
+    // 当前年
+    const year = (new Date).getFullYear();
+
+    // 数据库已有的数据
+    const dbResult = await db.runSql(
+      `SELECT project_code FROM ${db.tableName} WHERE train_project_name='${projectName}'` +
+      ` AND project_code LIKE '${year}-YY1-___-___';`
+    );
+    const countList = JSON.parse(JSON.stringify(dbResult));
+    const countSet = new Set(countList.map((it: any) => {
+      const matched = (it.project_code as string).match(/-(\d*)$/)?.[1];
+      return +matched;
+    }));
+
+    // 得到当前不重复的 count
+    do {
+      offset++;
+    } while(countSet.has(offset));
+    const formatedCount = offset.toString().padStart(3, '0');
+    const fullCode = `${year}-YY1-${code}-${formatedCount}`;
+
+    data.project_code = fullCode;
+    return data;
+  },
 });
 
 // 生成下一个项目编号

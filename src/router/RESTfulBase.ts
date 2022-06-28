@@ -10,6 +10,8 @@ interface Hanlders<T = any> {
   afterUpdate?: (ctx: Koa.ParameterizedContext, id: string) => void;
   afterDelete?: (ctx: Koa.ParameterizedContext, id: string) => void;
   additionalUpdate?: (ctx: Koa.ParameterizedContext, data: T) => Partial<T>;
+  // 创建前数据处理
+  resolveInseartData?: (ctx: Koa.ParameterizedContext, data: T) => Partial<T> | Promise<Partial<T>>;
 }
 
 const NODATA_OR_NOAUTH_MSG = '没有该数据或无权限';
@@ -88,7 +90,10 @@ export const createRouter = <T extends CommonTable>(db: DB<T>, handlers: Hanlder
     // 添加
     .post('/list', async (ctx) => {
       const fieldsMap = ctx.session.datasMap[db.tableName];
-      const data = ctx.request.body ?? {};
+      let data = ctx.request.body ?? {};
+      if(handlers.resolveInseartData) {
+        data = await handlers.resolveInseartData(ctx, data);
+      }
       if(isFieldValueValid(data, fieldsMap)) {
         if(handlers.beforeInsert) {
           const checkRes = await handlers.beforeInsert(ctx, data);
