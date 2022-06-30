@@ -1,7 +1,7 @@
 import { promisify } from 'util';
 import child_process from 'child_process';
 import Router from 'koa-router';
-import { DB, createTable, mysqlConfig } from '../db/mysql';
+import { DB, createTable, mysqlConfig, backupDb } from '../db/mysql';
 import { setResult, isAdmin, setError, setBinaryResult, getDateTimeString } from '~/util';
 import { nanoid } from 'nanoid';
 import {
@@ -206,11 +206,13 @@ router
   // 数据库备份
   .get('/backup', async (ctx) => {
     if(await isAdmin(ctx)) {
-      const pw = mysqlConfig.password;
-      const dbName = mysqlConfig.database;
-      const containerName = 'data-analysis-system_mysql_1';
-      const cmd = `docker exec ${containerName} bash -c 'exec mysqldump --databases ${dbName} -uroot -p"${pw}"'`;
-      const { stdout, stderr } = await exec(cmd);
+      const res = await backupDb();
+      const stdout = res.dump.schema + '\n\n' + res.dump.data;
+      // const pw = mysqlConfig.password;
+      // const dbName = mysqlConfig.database;
+      // const containerName = 'data-analysis-system_mysql_1';
+      // const cmd = `docker exec ${containerName} bash -c 'exec mysqldump --databases ${dbName} -uroot -p"${pw}"'`;
+      // const { stdout, stderr } = await exec(cmd);
       setBinaryResult(ctx, stdout, `backup_${getDateTimeString()}.sql`);
     } else {
       setError(ctx, 412, '没有权限');

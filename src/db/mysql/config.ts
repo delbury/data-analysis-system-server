@@ -2,6 +2,7 @@ import mysql, { ConnectionConfig } from 'mysql';
 import keyBy from 'lodash/keyBy';
 import { DBTable, DBTableCol } from '../interface';
 import { TableNames } from '~types/tables';
+import mysqldump, { ConnectionOptions } from 'mysqldump';
 
 // 表配置
 import workbenchTable from '../tables/workbench_table';
@@ -138,3 +139,19 @@ export const runSql = (cnt: mysql.Connection, sql: string): Promise<any> => {
 // 转义 sql 查询值
 export const transferSqlSearchValue = (v: string) =>
   v.replaceAll('\\', '\\\\').replaceAll(/(_|%|')/g, (s) => `\\${s}`);
+
+// 数据库备份
+export const backupDb = async () => {
+  return await mysqldump({
+    connection: mysqlConfig as ConnectionOptions,
+    // dumpToFile: './temp_backup_db.sql',
+    // compressFile: true,
+    dump: {
+      schema: {
+        table: {
+          dropIfExist: true,
+        },
+      },
+    },
+  });
+};
