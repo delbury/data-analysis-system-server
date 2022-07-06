@@ -2,7 +2,7 @@ import { promisify } from 'util';
 import child_process from 'child_process';
 import Router from 'koa-router';
 import { DB, createTable, mysqlConfig, backupDb } from '../db/mysql';
-import { setResult, isAdmin, setError, setBinaryResult, getDateTimeString } from '~/util';
+import { setResult, isAdmin, setError, setBinaryResult, getDateTimeStringSafe } from '~/util';
 import { nanoid } from 'nanoid';
 import {
   WorkbenchTable,
@@ -170,9 +170,11 @@ export const initDbTables = async (globalForce = false) => {
 
 router
   .get('/test', async (ctx) => {
+    console.log('get test');
     setResult(ctx, null, 'GET OK');
   })
   .post('/test', async (ctx) => {
+    console.log('post test');
     setResult(ctx, null, 'POST OK');
   })
   .post('/init', async (ctx) => {
@@ -213,7 +215,7 @@ router
       // const containerName = 'data-analysis-system_mysql_1';
       // const cmd = `docker exec ${containerName} bash -c 'exec mysqldump --databases ${dbName} -uroot -p"${pw}"'`;
       // const { stdout, stderr } = await exec(cmd);
-      setBinaryResult(ctx, stdout, `backup_${getDateTimeString()}.sql`);
+      setBinaryResult(ctx, stdout, `backup_${getDateTimeStringSafe()}.sql`);
     } else {
       setError(ctx, 412, '没有权限');
     }

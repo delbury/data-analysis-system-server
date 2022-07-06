@@ -4,6 +4,8 @@ import { db as dbAccount } from '~/router/account/db';
 import moment from 'moment';
 
 // 生成日期时间字符串
+export const getDateTimeStringSafe =
+  (date: Date | string | number = new Date()) => moment(date).format('YYYY-MM-DD_HH-mm-ss');
 export const getDateTimeString =
   (date: Date | string | number = new Date()) => moment(date).format('YYYY-MM-DD HH:mm:ss');
 export const getDateString =
