@@ -53,7 +53,7 @@ const router = createRouter(db, {
     // 数据库已有的数据
     const dbResult = await db.runSql(
       `SELECT project_code FROM ${db.tableName} WHERE train_project_name='${projectName}'` +
-      ` AND project_code LIKE '${year}-YY1-___-___';`
+      ` AND project_code LIKE '${year}-YY1-${code}-___';`
     );
     const countList = JSON.parse(JSON.stringify(dbResult));
     const countSet = new Set(countList.map((it: any) => {
